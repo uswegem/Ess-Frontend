@@ -1,0 +1,141 @@
+.sidebar {
+  background-color: aliceblue !important;
+}
+.MuiPaper-root.MuiPaper-elevation.MuiPaper-elevation0.MuiDrawer-paper.MuiDrawer-paperAnchorLeft.MuiDrawer-paperAnchorDockedLeft {
+  background-color: aliceblue !important;
+}
+.sidebarWrapper {
+  padding: 10px;
+  margin-top: 40px;
+  background-color: aliceblue !important;
+}
+
+.sidebarTitle {
+  font-size: 14px;
+  color: #000000;
+  display: none;
+  font-family: monospace;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.sidebarList {
+  list-style: none;
+  padding: 5px;
+}
+.sidebarListItem {
+  padding: 5px;
+  cursor: pointer;
+  display: flex;
+  font-size: 14px;
+  font-weight: 600;
+  align-items: center;
+  border-radius: 19px 0px;
+  color: #000000;
+}
+
+li.sidebarListItem:hover {
+  margin-top: 1%;
+  background-color: #a88a70;
+  color: white !important;
+  font-weight: 600;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px,
+    rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+}
+
+a.link.active .sidebarListItem {
+  background-color: #a88a70;
+  padding-left: 12px;
+  margin-top: 3px;
+  color: white !important;
+  margin-bottom: 3px;
+  font-weight: 600;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px,
+    rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+}
+
+.sidebarIcon {
+  margin-right: 15px;
+  font-size: 20px !important;
+}
+
+.sidebarSelect {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.sidebarSelectHead {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  padding: 10px 10px 10px 10px;
+  width: 100%;
+  border-radius: 8px;
+  background-color: transparent;
+  align-items: flex-start;
+}
+.sidebarSelectList {
+  padding-left: 9px;
+  margin-top: 10px;
+}
+.sidebarSelectList div {
+  display: flex;
+  padding:7px 10px 7px 10px;
+  flex-direction: column;
+  justify-content: flex-start;
+  font-family: "Nanum Gothic", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  align-items: flex-start;
+  color: #000000;
+  list-style: none;
+  font-size: 12px;
+  border-left: 1px solid #ced4da;
+}
+.sidebarSelectHead:hover {
+  background-color: #e9ecef;
+}
+.sidebarSelectList .active div {
+  width: 100%;
+  border-radius: 8px;
+  background-color: #e9ecef;
+}
+
+.arrowIcon {
+  font-size: 22px !important;
+  color: #fff;
+  transition: transform 0.2s ease-in-out; /* Adjust the duration and timing function as needed */
+}
+
+.sidebarSelectHead .icon {
+  font-size: 22px !important;
+  color: #000000;
+}
+
+.sidebarSelectHead span {
+  font-size: 14px;
+  color: #000000;
+  font-family: "Nanum Gothic", sans-serif;
+  font-weight: 600;
+  font-style: normal;
+}
+.active .sidebarSelectHead {
+  width: 100%;
+  border-radius: 8px;
+  border-top-right-radius: 0px;
+  background-color: #4361ee;
+}
+
+.active .sidebarSelectHead .icon {
+  color: #fff;
+}
+
+.active .sidebarSelectHead span {
+  color: #fff;
+}
+
+
+.sidebarMenu{
+  margin-top: 10px;
+}

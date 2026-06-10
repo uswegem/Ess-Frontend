@@ -1,0 +1,74 @@
+.topbarIconContainer{
+    position: relative;
+    cursor: pointer;
+    margin-right: 10px;
+    color: #555;
+}
+.container{
+margin: 0;
+padding: 0;
+}
+.logoImg{
+    height: 66px;
+    width: 67px;
+    color: #a88a70 ;
+    cursor: pointer;
+}
+
+.spanName{
+    margin-left: 16px;
+    color: #000000 ;
+    font-size: 22px;
+    font-family: "Nanum Gothic", sans-serif;
+    font-weight: 600;
+}
+
+.menuIcons{
+    padding: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    border-radius: 10px;
+}
+li .MuiButtonBase-root:hover{
+    background-color: #9c85aa;
+}
+
+.topIconbadge{
+    width: 15px;
+    height: 15px;
+    position: absolute;
+    top: -5px;
+    right: 0px;
+    background-color: #7d499d;
+    color: #a88a70 ;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+
+.topAvatar{
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px, rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+}
+
+
+.topRight{
+    display: flex;
+    align-items: center;
+    
+}
+.topbarWrapper{
+    height: 100%;
+    width: 100%;
+    padding: 0px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}

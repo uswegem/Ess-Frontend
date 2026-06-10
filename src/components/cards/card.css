@@ -1,0 +1,204 @@
+.cardWrapper {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.cardContainer {
+  display: flex;
+  min-width: 248px;
+  margin: 10px;
+  padding: 10px;
+  cursor: pointer;
+  border-radius: 15px;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
+  transition: box-shadow 0.5s ease-in-out, transform 0.5s ease-in-out; /* Adjust the transition duration as needed */
+}
+
+.cardContainer:hover {
+  box-shadow: rgba(0, 0, 0, 0.2) 0px 20px 30px;
+  transform: translateY(-3px); /* Use translateY instead of translate */
+}
+
+.cardContainer:hover {
+  transform: translate(0, -5px);
+  /* background-color: #c16565;
+    -webkit-box-shadow: 0px 0px 5px 0px #c16565; */
+  /* box-shadow: 0px 0px 5px 0px #c16565; */
+}
+
+.cardTitle  {
+  font-size: 11px;
+  font-weight: 600;
+  color: #000000;
+  text-align: right;
+  font-family: system-ui;
+  text-transform: uppercase;
+}
+
+.cardTopLogo {
+  text-align: right;
+}
+
+.cardLogo {
+  color: #000000 !important;
+  font-size: 35px !important;
+}
+
+.userCount {
+  color: #000000;
+  font-weight: 500;
+  font-size: 24px;
+  align-items: center;
+}
+.trendingLogo {
+  margin-right: 6px;
+  font-weight: 500 !important;
+  font-size: 23px !important;
+  color: #000000;
+}
+
+@keyframes glowing {
+    0% { text-shadow: 0 0 10px #000000; }
+    50% { text-shadow: 0 0 40px #000000; }
+    100% { text-shadow: 0 0 10px #000000; }
+}
+
+.glowText{
+    font-size:16px;
+    color: #000000;
+    animation: glowing 2s infinite;
+}
+
+.card-section{
+  margin-top: 20px;
+}
+
+.new-white-x{
+  background-color: #fff;
+  width: 333px;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px;
+  padding: 15px;
+  height: auto;
+  border-radius: 7px;
+}
+.new-white-x .text{
+  font-size: 14px;
+  color: #919191;
+  font-family: system-ui;
+}
+
+
+
+
+
+.header h2 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+}
+
+.filter-button {
+  background-color: #e6e8fd;
+  border: none;
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: #3c50e0;
+  cursor: pointer;
+}
+
+.filter-button.active {
+  background-color: #3c50e0;
+  color: white;
+}
+
+
+.question-meta {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+
+.question-text {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #ddd;
+}
+
+.action-button {
+  background-color: #e6e8fd;
+  border: none;
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-weight: 600;
+  font-size: 12px;
+  color: #3c50e0;
+  cursor: pointer;
+}
+
+.icon img {
+  width: 25px;
+  height: 25px;
+  background-color: #e6e8fd;
+  border-radius: 50%;
+  padding: 5px;
+}
+
+
+.booking-card {
+  border-bottom: 1px solid #ddd;
+  padding: 10px;
+  margin-bottom: 15px;
+}
+
+.booking-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.time-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.time {
+  font-size: 14px;
+  color: #333;
+}
+
+.status {
+  font-size: 14px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: white;
+}
+
+.status.confirmed {
+  background-color: #28a745;
+}
+
+.status.pending {
+  background-color: #ffc107;
+}
+
+.service-count, .user-name {
+  font-size: 14px;
+  color: #555;
+}
