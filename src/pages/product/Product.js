@@ -19,7 +19,7 @@ import {
     FormHelperText,
 } from "@mui/material";
 import { getRequest, postRequest } from "../../ApiFunction";
-import API, { BASE_URL } from "../../Api";
+import API from "../../Api";
 import { toast } from "react-toastify";
 import { getESSErrorMessage, isESSSuccess } from "../../utils/essErrorHandler";
 
@@ -115,11 +115,59 @@ const Product = () => {
     };
 
  
+    const resetForm = () => {
+        setForm({
+            fspCode: "",
+            fspName: "",
+            productCode: "",
+            productName: "",
+            minTenure: "",
+            maxTenure: "",
+            interestRate: "",
+            processingFee: "",
+            insurance: "",
+            minAmount: "",
+            maxAmount: "",
+            repaymentType: "",
+            insuranceType: "",
+            productDescription: "",
+            termsCondition: [],
+            forExecutive: false,
+            shariaFacility: false,
+            deductionCode: "",
+        });
+        setErrors({});
+    };
+
+    const buildProductPayload = (formData) => ({
+        productCode: formData.productCode,
+        deductionCode: formData.deductionCode,
+        productName: formData.productName,
+        productDescription: formData.productDescription || "",
+        minTenure: Number(formData.minTenure),
+        maxTenure: Number(formData.maxTenure),
+        interestRate: Number(formData.interestRate),
+        processingFee: formData.processingFee ? Number(formData.processingFee) : 0,
+        insurance: Number(formData.insurance),
+        minAmount: Number(formData.minAmount),
+        maxAmount: Number(formData.maxAmount),
+        repaymentType: formData.repaymentType || "Flat",
+        insuranceType: formData.insuranceType,
+        forExecutive: formData.forExecutive,
+        shariaFacility: formData.shariaFacility,
+        termsConditions: (formData.termsCondition || []).map((term) => ({
+            termsConditionNumber: String(term.termNumber),
+            description: term.description,
+            effectiveDate: term.effectiveDate,
+        })),
+    });
+
     const createProduct = async (formData) => {
         const toastId = toast.loading("Creating product...");
+        const payload = buildProductPayload(formData);
 
         try {
-            const result = await postRequest(`${BASE_URL + API.CREATE_PRODUCT}`, formData);
+            const result = await postRequest(API.CREATE_PRODUCT, payload);
             console.log('Full API response:', result);
 
             // Handle ESS response format
@@ -240,38 +288,45 @@ const Product = () => {
         setErrors(newErrors);
 
         if (Object.keys(newErrors).length === 0) {
-            createProduct(form)
+            const result = await createProduct(form);
+            if (result?.success) {
+                handleClose();
+                resetForm();
+                fetchProducts();
+            }
         }
     };
 
 
-    const fetchProducts = useCallback(async (event) => {
+    const fetchProducts = useCallback(async () => {
         try {
-            const result = await getRequest(`${BASE_URL + API.ALL_PRODUCTS}`);
+            const result = await getRequest(API.ALL_PRODUCTS);
+            const { success, data, message } = result.data;
 
-            const { status, data, message } = result.data;
-
-            if (!status) {
-                toast.error(message);
+            if (!success) {
+                toast.error(message || "Failed to load products");
                 return;
             }
-            const newData = data.map((p) => ({
-                id: p.id,
-                name: p.name,
-                shortName: p.shortName,
-                currency: p.currency.code,
-                principal: p.principal,
-                minPrincipal: p.minPrincipal,
-                maxPrincipal: p.maxPrincipal,
-                interestRate: p.annualInterestRate,
-                repayments: p.numberOfRepayments,
-                repaymentFrequency: `${p.repaymentEvery} ${p.repaymentFrequencyType.value}`,
-                amortization: p.amortizationType.value,
-                interestType: p.interestType.value,
-                startDate: new Date(p.startDate[0], p.startDate[1] - 1, p.startDate[2]).toISOString(),
-                status: p.status,
+
+            const products = data?.products || [];
+            const newData = products.map((p) => ({
+                id: p.id || p._id,
+                productCode: p.productCode,
+                name: p.productName || p.name,
+                deductionCode: p.deductionCode,
+                minTenure: p.minTenure,
+                maxTenure: p.maxTenure,
+                minAmount: p.minAmount,
+                maxAmount: p.maxAmount,
+                interestRate: p.interestRate ?? p.rate,
+                processingFee: p.processingFee,
+                insurance: p.insurance,
+                repaymentType: p.repaymentType,
+                insuranceType: p.insuranceType,
+                forExecutive: p.forExecutive ? "Yes" : "No",
+                shariaFacility: p.shariaFacility ? "Yes" : "No",
             }));
-            setLoanProducts(newData || [])
+            setLoanProducts(newData);
         } catch (err) {
             toast.error(err.message);
             console.error(err.message);
@@ -325,25 +380,20 @@ const Product = () => {
     }, [open]);
 
     const columns = [
-        { field: "id", headerName: "ID", width: 70 },
+        { field: "productCode", headerName: "Product Code", width: 120 },
         { field: "name", headerName: "Product Name", width: 200 },
-        { field: "shortName", headerName: "Short Name", width: 120 },
-        { field: "currency", headerName: "Currency", width: 100 },
-        { field: "principal", headerName: "Principal", width: 140 },
-        { field: "minPrincipal", headerName: "Min Principal", width: 140 },
-        { field: "maxPrincipal", headerName: "Max Principal", width: 160 },
-        { field: "interestRate", headerName: "Interest Rate (%)", width: 160 },
-        { field: "repayments", headerName: "No. of Repayments", width: 180 },
-        { field: "repaymentFrequency", headerName: "Repayment Frequency", width: 200 },
-        { field: "amortization", headerName: "Amortization", width: 180 },
-        { field: "interestType", headerName: "Interest Type", width: 180 },
-        {
-            field: "startDate",
-            headerName: "Start Date",
-            width: 160,
-            valueGetter: (params) => new Date(params.row.startDate).toLocaleDateString(),
-        },
-        { field: "status", headerName: "Status", width: 180 },
+        { field: "deductionCode", headerName: "Deduction Code", width: 130 },
+        { field: "minTenure", headerName: "Min Tenure", width: 110 },
+        { field: "maxTenure", headerName: "Max Tenure", width: 110 },
+        { field: "minAmount", headerName: "Min Amount", width: 130 },
+        { field: "maxAmount", headerName: "Max Amount", width: 130 },
+        { field: "interestRate", headerName: "Interest Rate (%)", width: 140 },
+        { field: "processingFee", headerName: "Processing Fee (%)", width: 150 },
+        { field: "insurance", headerName: "Insurance (%)", width: 120 },
+        { field: "repaymentType", headerName: "Repayment Type", width: 140 },
+        { field: "insuranceType", headerName: "Insurance Type", width: 140 },
+        { field: "forExecutive", headerName: "For Executive", width: 120 },
+        { field: "shariaFacility", headerName: "Sharia Facility", width: 130 },
         {
             field: "action",
             headerName: "Action",

@@ -2,7 +2,7 @@ const BASE_URL = process.env.REACT_APP_API_V1_BASE_URL || 'http://localhost:3008
 
 const API = {
     LOGIN: '/auth/login',
-    CREATE_PRODUCT: '/auth/product-create',
+    CREATE_PRODUCT: '/products',
     ALL_PRODUCTS: '/loan/list-products',
     ALL_EMPLOYEES_LOAN: '/loan/list-employee-loan',
 
