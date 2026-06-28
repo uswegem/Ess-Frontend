@@ -1,112 +1,147 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem, Box,
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import Paper from '@mui/material/Paper';
-import { LockOpenIcon } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
-import { getRequest } from "../../ApiFunction";
-import API, { BASE_URL } from "../../Api";
-import { toast } from "react-toastify";
+import { toast } from 'react-toastify';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { usePermissions } from '../../hooks/usePermissions';
+import {
+  listTenantUsers, createTenantUser, updateTenantUser, deactivateTenantUser,
+} from '../../services/userService';
 
-const Users = () => {
+const TENANT_ROLES = [
+  'tenant_admin',
+  'operations_manager',
+  'finance_officer',
+  'support_staff',
+];
+
+export default function Users() {
+  const { tenantId } = useActiveTenant();
+  const { can } = usePermissions();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    email: '', fullName: '', role: 'support_staff', username: '', phone: '',
+  });
+
+  const fetchUsers = useCallback(async () => {
+    if (!tenantId) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      setLoading(true);
+      const result = await listTenantUsers(tenantId);
+      const rows = (result.data?.users || []).map((u) => ({
+        id: u._id || u.id,
+        email: u.email || u.user?.email,
+        fullName: u.fullName || u.user?.fullName,
+        role: u.role,
+        isActive: u.isActive !== false,
+        userId: u.userId || u.user?._id,
+      }));
+      setUsers(rows);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId]);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleCreate = async () => {
+    try {
+      await createTenantUser(tenantId, form);
+      toast.success('User invited');
+      setOpen(false);
+      setForm({ email: '', fullName: '', role: 'support_staff', username: '', phone: '' });
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    }
+  };
+
+  const handleRoleChange = async (row, role) => {
+    try {
+      await updateTenantUser(tenantId, row.userId || row.id, { role });
+      toast.success('Role updated');
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    }
+  };
+
+  const handleDeactivate = async (row) => {
+    if (!window.confirm('Deactivate this user?')) return;
+    try {
+      await deactivateTenantUser(tenantId, row.userId || row.id);
+      toast.success('User deactivated');
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    }
+  };
 
   const columns = [
-    { field: "id", headerName: "ID", width: 70 },
-    { field: "username", headerName: "Username", width: 150 },
-    { field: "email", headerName: "Email", width: 220 },
-    { field: "role", headerName: "Role", width: 120 },
+    { field: 'fullName', headerName: 'Name', flex: 1 },
+    { field: 'email', headerName: 'Email', flex: 1 },
+    { field: 'role', headerName: 'Role', width: 180 },
+    { field: 'isActive', headerName: 'Active', width: 100, valueGetter: (p) => (p.row.isActive ? 'Yes' : 'No') },
     {
-      field: "createdAt",
-      headerName: "Created At",
-      width: 180,
-      valueGetter: (params) =>
-        new Date(params.row.createdAt).toLocaleString(),
-    },
-    {
-      field: "updatedAt",
-      headerName: "Updated At",
-      width: 180,
-      valueGetter: (params) =>
-        new Date(params.row.updatedAt).toLocaleString(),
-    },
-    {
-      field: "action",
-      headerName: "Action",
-      width: 180,
-      sortable: false,
-      renderCell: (params) => (
-        <div className="d-flex justify-content-center gap-2 align-items-center">
-          <LockOpenIcon
-            className="icon"
-            size={22}
-            style={{ cursor: "pointer", color: "green" }}
-            onClick={() => console.log("Unlock user:", params.row.id)}
-          />
-        </div>
+      field: 'actions',
+      headerName: 'Actions',
+      width: 220,
+      renderCell: (params) => can('users:manage') && (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <TextField
+            select size="small" value={params.row.role}
+            onChange={(e) => handleRoleChange(params.row, e.target.value)}
+            sx={{ minWidth: 140 }}
+          >
+            {TENANT_ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+          </TextField>
+          <Button size="small" color="error" onClick={() => handleDeactivate(params.row)}>Deactivate</Button>
+        </Box>
       ),
     },
   ];
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const result = await getRequest(`${BASE_URL + API.GET_ALL_USERS}`);
-
-      const { status, data, message } = result.data;
-
-      if (!status) {
-        toast.error(message || "Failed to fetch users");
-        return;
-      }
-
-      // Map the API response to match the DataGrid format
-      const formattedUsers = data?.map((user) => ({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-      })) || [];
-
-      setUsers(formattedUsers);
-    } catch (err) {
-      toast.error("Error fetching users: " + err.message);
-      console.error("Error fetching users:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  const rows = users;
-  const paginationModel = { page: 0, pageSize: 5 };
+  if (!tenantId) {
+    return <Box sx={{ p: 3 }}>Select a tenant to manage users, or log in as a tenant admin.</Box>;
+  }
 
   return (
-    <div className="container">
-      <div className="row">
-        <div className="col-xs-12">
-          <h5 className="mb-1">User Management</h5>
-          <p className="text-muted mb-4">
-            List of all users, their roles, status, and available actions.
-          </p>
-          <Paper className="custom-paper">
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              initialState={{ pagination: { paginationModel } }}
-              pageSizeOptions={[5, 10]}
-              loading={loading}
-              sx={{ border: 0 }}
-            />
-          </Paper>
-        </div>
-      </div>
+    <div className="p-3">
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+        <h5>Tenant Users</h5>
+        {can('users:manage') && (
+          <Button variant="contained" onClick={() => setOpen(true)}>Invite User</Button>
+        )}
+      </Box>
+      <Paper sx={{ height: 520 }}>
+        <DataGrid rows={users} columns={columns} loading={loading} pageSizeOptions={[10, 25]} />
+      </Paper>
+
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Invite Tenant User</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <TextField label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <TextField label="Full Name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+          <TextField label="Username (optional)" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+          <TextField select label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+            {TENANT_ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
+          </TextField>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleCreate}>Create</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
-};
-
-export default Users;
+}

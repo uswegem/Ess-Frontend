@@ -1,171 +1,146 @@
-import "./login.css";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Container } from "@mui/material";
-import { LoginPaper } from "../../components/Styles";
-import API, { BASE_URL } from "../../Api";
-import { postRequest } from "../../ApiFunction";
-import toast from "react-hot-toast";
-import { useDispatch } from "react-redux";
-import { setUser } from "../../slice/userInfo";
+import './login.css';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Container, Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, List, ListItemButton, ListItemText,
+} from '@mui/material';
+import { LoginPaper } from '../../components/Styles';
+import toast from 'react-hot-toast';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../../slice/userInfo';
+import { setAuthSession } from '../../slice/authSlice';
+import { login, selectTenant } from '../../services/authService';
 
 export default function Login() {
-
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [view, setView] = useState(false);
-  const dispatch = useDispatch()
+  const [pendingSession, setPendingSession] = useState(null);
+  const [obj, setObj] = useState({ username: '', password: '' });
 
-  const [obj, setObj] = useState({
-    username: "",
-    password: "",
-  });
-
-  const handleKeyDown = (e) => {
-    if (e.key === " ") {
-      e.preventDefault();
-    }
-  };
-  const handleView = () => {
-    setView(!view);
-  };
-
-
-
+  const handleView = () => setView(!view);
 
   const inputEvent = (e) => {
-    setObj({
-      ...obj,
-      [e.target.name]: e.target.value,
-    });
+    setObj({ ...obj, [e.target.name]: e.target.value });
   };
 
-
-
-  // const submitForm = async (event) => {
-  //   event.preventDefault();
-  //   try {
-  //     localStorage.setItem("adminToken", "loggedin");
-  //     navigate("/dashboard")
-  //     return
-  //     const result = await postRequest(`${API.LOGIN}`, obj);
-  //     // if (!result.data.status) {
-  //     //   await delay(1000);
-  //     //   toast.error(result.data.message);
-  //     // } else {
-  //     //   setToken(result.data.token);
-  //     //   getCounts();
-  //     //   setLoad(false);
-  //     //   localStorage.setItem("adminToken", result.data.token);
-  //     //   toast.success("Logged In successfully!");
-  //     //   localStorage.setItem("user", JSON.stringify(result.data.data));
-  //     //   dispatch(setUser(result.data.data));
-  //     //   await delay(1000);
-  //     //   setLoad(false);
-  //     //   navigate("/dashboard");
-  //     // }
-
-  //     // if (!result.data.status) {
-  //     //   if (result.data.code === 201) {
-  //     //     toast.error(result.data.message);
-  //     //     setLoader(false);
-  //     //   }
-  //     // } else {
-  //     //   toast.success("Login successfully");
-  //     //   localStorage.setItem("admintoken", result.data.token);
-  //     // }
-  //   } catch (err) {
-  //     console.error(err.message);
-  //   }
-  // };
-
+  const applySession = (session) => {
+    dispatch(setUser(session.user));
+    dispatch(setAuthSession(session));
+    navigate('/dashboard');
+  };
 
   const submitForm = async (event) => {
     event.preventDefault();
-    const toastId = toast.loading("Authenticating...");
-
+    const toastId = toast.loading('Authenticating...');
     try {
-      const result = await postRequest(`${BASE_URL + API.LOGIN}`, obj);
-      const { success, data, message } = result?.data;
+      const session = await login(obj);
+      toast.success('Login successful!', { id: toastId });
 
-      if (!success) {
-        toast.error(message, { id: toastId, autoClose: 3000, });
+      const memberships = session.memberships || [];
+      if (!session.activeTenant && memberships.length > 1) {
+        setPendingSession(session);
         return;
       }
-
-      localStorage.setItem("adminToken", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      dispatch(setUser(data.user));
-
-      toast.success("Login successful!", { id: toastId, autoClose: 3000, });
-      navigate("/dashboard");
+      applySession(session);
     } catch (err) {
-      toast.error(err.message, { id: toastId, autoClose: 3000, });
-      console.error(err.message);
+      toast.error(err.response?.data?.message || err.message, { id: toastId });
     }
   };
 
+  const handleTenantPick = async (tenantId) => {
+    try {
+      const switched = await selectTenant(tenantId);
+      const session = {
+        ...pendingSession,
+        token: switched.token,
+        refreshToken: switched.refreshToken,
+        activeTenant: switched.activeTenant,
+        permissions: switched.permissions,
+        authContext: switched.authContext,
+      };
+      setPendingSession(null);
+      applySession(session);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    }
+  };
 
   return (
     <>
       <div className="loginBg">
         <Container maxWidth="xs">
           <LoginPaper data-aos="zoom-in">
-            <div className="row">
-              <div className="col-xs-12 col-sm-12 col-md-12">
-                <form onSubmit={submitForm} method="post">
-                  <div className="login-page">
-                    <div className="w-100 text-center">
-                      <br />
-                      <div className="fields">
-                        <h4 className="w-100 text-center">MiraCore</h4>
-                        <div className="logo mt-4" data-aos="fade-up">
-                          {'Sign In to Administrator'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="fields">
-                      <label>Email</label>
-                      <input
-                        required={true}
-                        autoComplete='new-email'
-                        type="username"
-                        id="username"
-                        name="username"
-                        placeholder="username"
-                        onChange={inputEvent}
-                        onKeyDown={handleKeyDown}
-                      />
-                      <label>Password</label>
-                      <div className="w-100 view">
-                        <input
-                          required={true}
-                          type={view ? "text" : "password"}
-                          autoComplete='new-password'
-                          id="password"
-                          name="password"
-                          placeholder="********"
-                          onChange={inputEvent}
-                          onKeyDown={handleKeyDown}
-                        />
-                        <i
-                          className={
-                            !view ? "fa-solid fa-eye-slash" : "fa-solid fa-eye"
-                          }
-                          onClick={handleView}
-                        ></i>
-                      </div>
-                      <button className="custom-button w-100 mt-2">
-                        Sign In
-                        {/* {load ? "authenticating..." : "Sign In"} */}
-                      </button>
+            <form onSubmit={submitForm} method="post">
+              <div className="login-page">
+                <div className="w-100 text-center">
+                  <br />
+                  <div className="fields">
+                    <h4 className="w-100 text-center">MiraCore</h4>
+                    <div className="logo mt-4" data-aos="fade-up">
+                      Sign In to Administrator
                     </div>
                   </div>
-                </form>
+                </div>
+                <div className="fields">
+                  <label>Username</label>
+                  <input
+                    required
+                    autoComplete="username"
+                    type="text"
+                    id="username"
+                    name="username"
+                    placeholder="username"
+                    onChange={inputEvent}
+                  />
+                  <label>Password</label>
+                  <div className="w-100 view">
+                    <input
+                      required
+                      type={view ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      id="password"
+                      name="password"
+                      placeholder="********"
+                      onChange={inputEvent}
+                    />
+                    <i
+                      className={!view ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'}
+                      onClick={handleView}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={() => {}}
+                    />
+                  </div>
+                  <button type="submit" className="custom-button w-100 mt-2">
+                    Sign In
+                  </button>
+                </div>
               </div>
-            </div>
+            </form>
           </LoginPaper>
         </Container>
       </div>
+
+      <Dialog open={Boolean(pendingSession)} onClose={() => {}}>
+        <DialogTitle>Select FSP tenant</DialogTitle>
+        <DialogContent>
+          <List>
+            {(pendingSession?.memberships || []).map((m) => (
+              <ListItemButton key={m.tenantId} onClick={() => handleTenantPick(m.tenantId)}>
+                <ListItemText
+                  primary={m.tenantName || m.tenantId}
+                  secondary={`${m.fspCode} — ${m.role}`}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingSession(null)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

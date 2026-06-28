@@ -1,86 +1,89 @@
-import React, { useEffect } from "react";
-import "./topbar.css";
-import { NavLink, useNavigate } from "react-router-dom";
-import { Button, Menu, MenuItem } from "@mui/material";
-import { Person, Key, Logout } from "@mui/icons-material";
-import { setCount } from "../../slice/count";
-import { useDispatch, useSelector } from "react-redux";
-import { setUser } from "../../slice/userInfo";
+import React, { useEffect } from 'react';
+import './topbar.css';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Button, Menu, MenuItem } from '@mui/material';
+import { Person, Key, Logout } from '@mui/icons-material';
+import { useDispatch, useSelector } from 'react-redux';
+import { setAuthSession, clearAuth } from '../../slice/authSlice';
+import { setUser } from '../../slice/userInfo';
+import { logout } from '../../services/authService';
+import { getProfile } from '../../services/authService';
+import TenantSwitcher from './TenantSwitcher';
 
 export default function Topbar() {
-  const user = useSelector((state) => state.userinfo.user);
+  const auth = useSelector((state) => state.auth);
+  const user = auth.user || {};
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const open = Boolean(anchorEl);
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-  const logoutClick = async (e) => {
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!localStorage.getItem('adminToken')) return;
+      try {
+        const profile = await getProfile();
+        dispatch(setAuthSession({
+          user: profile.user,
+          activeTenant: profile.activeTenant,
+          memberships: profile.tenants || [],
+          authContext: profile.authContext,
+          permissions: profile.authContext?.permissions || [],
+        }));
+        dispatch(setUser(profile.user));
+      } catch {
+        // ignore on boot
+      }
+    };
+    loadProfile();
+  }, [dispatch]);
+
+  const logoutClick = async () => {
     try {
-      localStorage.removeItem("adminToken");
-      localStorage.clear();
-      navigate("/");
-      return
+      await logout();
+      dispatch(clearAuth());
+      dispatch(setUser({}));
+      navigate('/');
     } catch (err) {
       console.error(err.message);
     }
   };
 
-  useEffect(() => {
-    dispatch(setCount(JSON.parse(localStorage.getItem("count"))));
-    dispatch(setUser(JSON.parse(localStorage.getItem("user"))));
-  }, [dispatch]);
-
   return (
     <div className="topbarWrapper">
       <div className="logoContainer">
-        <span className="spanName">
-          MiraCore
-        </span>
+        <span className="spanName">MiraCore</span>
       </div>
-      <div className="topRight">
+      <div className="topRight" style={{ display: 'flex', alignItems: 'center' }}>
+        <TenantSwitcher />
         <Button
           id="basic-button"
-          aria-controls={open ? "basic-menu" : undefined}
+          aria-controls={open ? 'basic-menu' : undefined}
           aria-haspopup="true"
-          aria-expanded={open ? "true" : undefined}
-          onClick={handleClick}
-          sx={{ shadow: "none" }}
+          aria-expanded={open ? 'true' : undefined}
+          onClick={(e) => setAnchorEl(e.currentTarget)}
+          sx={{ shadow: 'none', color: '#fff' }}
         >
-          {user?.name || 'Admin'}
+          {user?.fullName || user?.username || 'Admin'}
         </Button>
         <Menu
           id="basic-menu"
           anchorEl={anchorEl}
           open={open}
-          onClose={handleClose}
-          MenuListProps={{
-            "aria-labelledby": "basic-button",
-          }}
+          onClose={() => setAnchorEl(null)}
         >
           <NavLink to="/my-profile" className="link">
-            <div>
-              <MenuItem onClick={handleClose}>
-                <Person className="menuIcons" />
-                Profile
-              </MenuItem>
-            </div>
+            <MenuItem onClick={() => setAnchorEl(null)}>
+              <Person className="menuIcons" /> Profile
+            </MenuItem>
           </NavLink>
           <NavLink to="/change-password" className="link">
-            <div>
-              <MenuItem onClick={handleClose}>
-                <Key className="menuIcons" />
-                Change Password
-              </MenuItem>
-            </div>
+            <MenuItem onClick={() => setAnchorEl(null)}>
+              <Key className="menuIcons" /> Change Password
+            </MenuItem>
           </NavLink>
           <MenuItem onClick={logoutClick}>
-            <Logout className="menuIcons" />
-            Logout
+            <Logout className="menuIcons" /> Logout
           </MenuItem>
         </Menu>
       </div>

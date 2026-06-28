@@ -1,104 +1,70 @@
-import React from "react";
-import { DataGrid } from "@mui/x-data-grid";
-import Paper from "@mui/material/Paper";
-import { CheckCircle, RefreshCw } from "lucide-react";
+import React, { useEffect, useState } from 'react';
+import { Paper, Button } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import { getRequest, putRequest } from '../../ApiFunction';
+import API from '../../Api';
+import { toast } from 'react-toastify';
 
-const NotificationManagement = () => {
+export default function NotificationManagement() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true);
+      const { data } = await getRequest(API.NOTIFICATIONS);
+      const list = (data.data?.notifications || data.data || []).map((n, i) => ({
+        id: n._id || i,
+        message: n.message || n.title || n.body,
+        status: n.read ? 'read' : 'unread',
+        createdAt: n.createdAt,
+        raw: n,
+      }));
+      setRows(list);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchNotifications(); }, []);
+
+  const markRead = async (id) => {
+    try {
+      await putRequest(API.notificationRead(id), {});
+      toast.success('Marked as read');
+      fetchNotifications();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    }
+  };
+
   const columns = [
-    { field: "id", headerName: "ID", width: 70 },
-    { field: "employeeName", headerName: "Employee", width: 180 },
-    { field: "loanId", headerName: "Loan ID", width: 120 },
-    { field: "message", headerName: "Message", width: 250 },
+    { field: 'message', headerName: 'Message', flex: 1 },
+    { field: 'status', headerName: 'Status', width: 120 },
     {
-      field: "status",
-      headerName: "Status",
-      width: 160,
-      renderCell: (params) => (
-        <span
-          style={{
-            color: params.row.status === "success" ? "green" : "red",
-            fontWeight: "bold",
-          }}
-        >
-          {params.row.status}
-        </span>
+      field: 'createdAt',
+      headerName: 'Created',
+      width: 180,
+      valueGetter: (p) => (p.row.createdAt ? new Date(p.row.createdAt).toLocaleString() : ''),
+    },
+    {
+      field: 'action',
+      headerName: 'Action',
+      width: 140,
+      renderCell: (p) => p.row.status === 'unread' && (
+        <Button size="small" onClick={() => markRead(p.row.id)}>Mark read</Button>
       ),
     },
-    {
-      field: "createdAt",
-      headerName: "Created At",
-      width: 180,
-      valueGetter: (params) =>
-        new Date(params.row.createdAt).toLocaleString(),
-    },
-    {
-      field: "action",
-      headerName: "Action",
-      width: 150,
-      sortable: false,
-      renderCell: (params) =>
-        params.row.status === "failure" ? (
-          <RefreshCw
-            size={22}
-            style={{ cursor: "pointer", color: "orange" }}
-            onClick={() => console.log("Resend notification:", params.row.id)}
-          />
-        ) : (
-          <CheckCircle size={22} style={{ color: "green" }} />
-        ),
-    },
   ];
-
-  const rows = [
-    {
-      id: 1,
-      employeeName: "John Doe",
-      loanId: "LN001",
-      message: "Loan request submitted successfully.",
-      status: "success",
-      createdAt: "2025-09-10T12:30:00Z",
-    },
-    {
-      id: 2,
-      employeeName: "Jane Smith",
-      loanId: "LN002",
-      message: "Failed to send loan approval notification.",
-      status: "failure",
-      createdAt: "2025-09-11T09:15:00Z",
-    },
-    {
-      id: 3,
-      employeeName: "Mike Johnson",
-      loanId: "LN003",
-      message: "Loan closed successfully.",
-      status: "success",
-      createdAt: "2025-09-12T14:45:00Z",
-    },
-  ];
-
-  const paginationModel = { page: 0, pageSize: 5 };
 
   return (
-    <div className="container">
-      <div className="row">
-        <div className="col-xs-12">
-          <h5 className="mb-1">Notification Management</h5>
-          <p className="text-muted mb-4">
-            List of all loan notifications, their status, and available actions.
-          </p>
-          <Paper className="custom-paper">
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              initialState={{ pagination: { paginationModel } }}
-              pageSizeOptions={[5, 10]}
-              sx={{ border: 0 }}
-            />
-          </Paper>
-        </div>
-      </div>
+    <div className="p-3">
+      <h5 className="mb-3">Notifications</h5>
+      <Paper sx={{ height: 500 }}>
+        <DataGrid rows={rows} columns={columns} loading={loading} pageSizeOptions={[10, 25]} />
+      </Paper>
     </div>
   );
-};
-
-export default NotificationManagement;
+}

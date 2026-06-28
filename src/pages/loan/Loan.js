@@ -161,7 +161,7 @@ const LoanListing = () => {
 
   const fetchLoans = useCallback(async (event) => {
     try {
-      const result = await getRequest(`${BASE_URL + API.ALL_EMPLOYEES_LOAN}`);
+      const result = await getRequest(API.ALL_EMPLOYEES_LOAN);
       const { status, data, message } = result.data;
 
       if (!status) {

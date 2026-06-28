@@ -1,28 +1,58 @@
-const BASE_URL = process.env.REACT_APP_API_V1_BASE_URL || 'http://localhost:3008/api/v1'
+export const BASE_URL = process.env.REACT_APP_API_V1_BASE_URL || 'http://localhost:3008/api/v1';
 
 const API = {
-    LOGIN: '/auth/login',
-    CREATE_PRODUCT: '/products',
-    ALL_PRODUCTS: '/loan/list-products',
-    ALL_EMPLOYEES_LOAN: '/loan/list-employee-loan',
+  // Auth
+  LOGIN: '/auth/login',
+  LOGOUT: '/auth/logout',
+  REFRESH: '/auth/refresh',
+  SELECT_TENANT: '/auth/select-tenant',
+  PROFILE: '/auth/profile',
+  CHANGE_PASSWORD: '/auth/change-password',
 
-    LOGOUT: BASE_URL + 'api/admin/admin_logout',
-    ADMIN_PROFILE: BASE_URL + 'api/admin/get_admin',
-    UPDATE_ADMIN: BASE_URL + 'api/admin/edit_admin',
-    CHANGE_PASSWORD: BASE_URL + 'api/admin/change_password',
+  // Tenants
+  TENANTS: '/tenants',
+  tenant: (id) => `/tenants/${id}`,
+  tenantStatus: (id) => `/tenants/${id}/status`,
+  tenantMifosConfig: (id) => `/tenants/${id}/mifos-config`,
+  tenantMifosValidate: (id) => `/tenants/${id}/mifos-config/validate`,
+  tenantIntegrationHealth: (id) => `/tenants/${id}/integration/health`,
+  tenantAudit: (id) => `/tenants/${id}/audit`,
+  tenantUsers: (id) => `/tenants/${id}/users`,
+  tenantUser: (tenantId, userId) => `/tenants/${tenantId}/users/${userId}`,
+  tenantApiKeys: (id) => `/tenants/${id}/api-keys`,
+  tenantApiKey: (tenantId, keyId) => `/tenants/${tenantId}/api-keys/${keyId}`,
+  tenantApiKeyUsage: (tenantId, keyId) => `/tenants/${tenantId}/api-keys/${keyId}/usage`,
+  tenantApiKeyRotate: (tenantId, keyId) => `/tenants/${tenantId}/api-keys/${keyId}/rotate`,
+  tenantCertificates: (id) => `/tenants/${id}/certificates`,
 
-    //user section
-    GET_ALL_USERS: BASE_URL + 'api/admin/get_all_users',
-    DELETE_USER: BASE_URL + 'api/admin/delete_user',
-    BLOCK_UNBLOCK_USER: BASE_URL + 'api/admin/block_unblock_user',
-    GET_USER_DETAILS: BASE_URL + 'api/admin/get_user_details',
+  // Onboarding
+  ONBOARDING_DRAFTS: '/onboarding/drafts',
+  onboardingDraft: (id) => `/onboarding/drafts/${id}`,
+  ONBOARDING_VALIDATE_FSP: '/onboarding/validate-fsp-code',
+  onboardingSubmit: (id) => `/onboarding/${id}/submit`,
+  onboardingReview: (id) => `/onboarding/${id}/review`,
 
-    //message response section
-    PENDING_RESPONSES: '/messages/pending-responses',
-    MESSAGE_REQUEST: '/messages/request',
-    MANUAL_RESPONSE: '/messages/manual-response',
-    MESSAGE_STATUS: '/messages/status'
-}
+  // Platform users
+  USERS: '/users',
+  user: (id) => `/users/${id}`,
 
-export default API
-export { BASE_URL }
+  // Products & loans
+  PRODUCTS: '/products',
+  product: (id) => `/products/${id}`,
+  ALL_PRODUCTS: '/loan/list-products',
+  ALL_EMPLOYEES_LOAN: '/loan/list-employee-loan',
+
+  // Dashboard & audit
+  DASHBOARD_OVERVIEW: '/dashboard/overview',
+  DASHBOARD_ACTIVITY: '/dashboard/activity',
+  DASHBOARD_MESSAGES: '/dashboard/messages',
+  AUDIT_LOGS: '/audit/logs',
+  AUDIT_STATS: '/audit/stats',
+
+  // Notifications & messages
+  NOTIFICATIONS: '/notification/list',
+  notificationRead: (id) => `/notification/read/${id}`,
+  PENDING_RESPONSES: '/messages/pending-responses',
+};
+
+export default API;
