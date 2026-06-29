@@ -63,7 +63,7 @@ export default function TenantSwitcher() {
           </Select>
         </FormControl>
       ) : (
-        <Typography variant="body2" sx={{ color: '#fff' }}>
+        <Typography variant="body2" sx={{ color: '#555', fontWeight: 500 }}>
           {activeTenant?.fspName || activeTenant?.tenantId || 'Platform'}
         </Typography>
       )}

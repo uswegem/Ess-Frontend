@@ -62,7 +62,14 @@ export default function Topbar() {
           aria-haspopup="true"
           aria-expanded={open ? 'true' : undefined}
           onClick={(e) => setAnchorEl(e.currentTarget)}
-          sx={{ shadow: 'none', color: '#fff' }}
+          startIcon={<Person sx={{ color: '#2f323b' }} />}
+          sx={{
+            color: '#2f323b',
+            textTransform: 'none',
+            fontWeight: 600,
+            fontSize: '0.95rem',
+            '&:hover': { backgroundColor: 'rgba(47, 50, 59, 0.06)' },
+          }}
         >
           {user?.fullName || user?.username || 'Admin'}
         </Button>

@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem, Box,
+import {
+  Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem, Box, Alert, Typography, InputAdornment, IconButton,
 } from '@mui/material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { DataGrid } from '@mui/x-data-grid';
 import { toast } from 'react-toastify';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
@@ -17,12 +19,20 @@ const TENANT_ROLES = [
   'support_staff',
 ];
 
+function copyToClipboard(value, label) {
+  navigator.clipboard.writeText(value).then(
+    () => toast.success(`${label} copied`),
+    () => toast.error(`Could not copy ${label.toLowerCase()}`),
+  );
+}
+
 export default function Users() {
   const { tenantId } = useActiveTenant();
   const { can } = usePermissions();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [credentials, setCredentials] = useState(null);
   const [form, setForm] = useState({
     email: '', fullName: '', role: 'support_staff', username: '', phone: '',
   });
@@ -56,15 +66,27 @@ export default function Users() {
 
   const handleCreate = async () => {
     try {
-      await createTenantUser(tenantId, form);
-      toast.success('User invited');
+      const result = await createTenantUser(tenantId, form);
+      const issued = result.data?.credentials;
       setOpen(false);
       setForm({ email: '', fullName: '', role: 'support_staff', username: '', phone: '' });
       fetchUsers();
+
+      if (issued?.isNewAccount && issued.temporaryPassword) {
+        setCredentials({
+          username: issued.username,
+          email: issued.email,
+          password: issued.temporaryPassword,
+        });
+      } else {
+        toast.success('User added to tenant. They can sign in with their existing password.');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
     }
   };
+
+  const closeCredentialsDialog = () => setCredentials(null);
 
   const handleRoleChange = async (row, role) => {
     try {
@@ -139,7 +161,68 @@ export default function Users() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreate}>Create</Button>
+          <Button variant="contained" onClick={handleCreate}>Invite</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={Boolean(credentials)} onClose={closeCredentialsDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Share login credentials (one-time)</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+          <Alert severity="warning">
+            Copy these credentials now and share them securely with the user.
+            The password will not be shown again.
+          </Alert>
+          <Typography variant="body2" color="text.secondary">
+            Email: {credentials?.email}
+          </Typography>
+          <TextField
+            label="Username"
+            value={credentials?.username || ''}
+            InputProps={{
+              readOnly: true,
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="Copy username"
+                    onClick={() => copyToClipboard(credentials?.username, 'Username')}
+                    edge="end"
+                  >
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+          <TextField
+            label="Temporary password"
+            value={credentials?.password || ''}
+            InputProps={{
+              readOnly: true,
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="Copy password"
+                    onClick={() => copyToClipboard(credentials?.password, 'Password')}
+                    edge="end"
+                  >
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="outlined"
+            onClick={() => copyToClipboard(
+              `Username: ${credentials?.username}\nPassword: ${credentials?.password}`,
+              'Credentials',
+            )}
+          >
+            Copy both
+          </Button>
+          <Button variant="contained" onClick={closeCredentialsDialog}>Done</Button>
         </DialogActions>
       </Dialog>
     </div>

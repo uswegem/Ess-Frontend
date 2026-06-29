@@ -13,6 +13,26 @@ import { createApiKey } from '../../services/apiKeyService';
 
 const STEPS = ['Organization', 'MIFOS Config', 'API Keys', 'Review', 'Submit'];
 
+const COUNTRY_OPTIONS = [
+  { code: 'TZ', name: 'Tanzania' },
+  { code: 'KE', name: 'Kenya' },
+  { code: 'UG', name: 'Uganda' },
+  { code: 'RW', name: 'Rwanda' },
+  { code: 'BI', name: 'Burundi' },
+  { code: 'ZM', name: 'Zambia' },
+  { code: 'MW', name: 'Malawi' },
+  { code: 'MZ', name: 'Mozambique' },
+  { code: 'ZA', name: 'South Africa' },
+];
+
+const EMPTY_ADDRESS = {
+  line1: '',
+  line2: '',
+  city: '',
+  region: '',
+  country: 'TZ',
+};
+
 export default function OnboardingWizard() {
   const { tenantId: routeTenantId } = useParams();
   const navigate = useNavigate();
@@ -28,7 +48,7 @@ export default function OnboardingWizard() {
     contactPerson: '',
     contactPhone: '',
     fspName: '',
-    address: '',
+    address: { ...EMPTY_ADDRESS },
     mifosMode: 'inherit_default',
     mifosBaseUrl: '',
     mifosTenantId: '',
@@ -43,6 +63,13 @@ export default function OnboardingWizard() {
     }
   }, [routeTenantId]);
 
+  const updateAddress = (field, value) => {
+    setForm((f) => ({
+      ...f,
+      address: { ...f.address, [field]: value },
+    }));
+  };
+
   const loadDraft = async (id) => {
     try {
       const result = await getDraft(id);
@@ -56,7 +83,13 @@ export default function OnboardingWizard() {
         contactPerson: t.contactPerson || f.contactPerson,
         contactPhone: t.contactPhone || f.contactPhone,
         fspName: t.fspName || f.fspName,
-        address: t.address || f.address,
+        address: {
+          line1: t.address?.line1 || '',
+          line2: t.address?.line2 || '',
+          city: t.address?.city || '',
+          region: t.address?.region || '',
+          country: t.address?.country || 'TZ',
+        },
         mifosMode: t.mifosConfig?.mode || f.mifosMode,
         mifosBaseUrl: t.mifosConfig?.baseUrl || f.mifosBaseUrl,
         mifosTenantId: t.mifosConfig?.tenantId || f.mifosTenantId,
@@ -64,6 +97,30 @@ export default function OnboardingWizard() {
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
     }
+  };
+
+  const buildCompanyInfo = () => {
+    const companyInfo = {
+      tenantName: form.tenantName,
+      fspCode: form.fspCode,
+      fspName: form.fspName || form.tenantName,
+      contactPerson: form.contactPerson,
+      contactEmail: form.contactEmail,
+      contactPhone: form.contactPhone,
+    };
+
+    const { line1, line2, city, region, country } = form.address;
+    if (line1?.trim() || line2?.trim() || city?.trim() || region?.trim()) {
+      companyInfo.address = {
+        line1: line1?.trim() || '',
+        line2: line2?.trim() || '',
+        city: city?.trim() || '',
+        region: region?.trim() || '',
+        country: country || 'TZ',
+      };
+    }
+
+    return companyInfo;
   };
 
   const saveOrganization = async () => {
@@ -81,29 +138,13 @@ export default function OnboardingWizard() {
       const id = created.data?.tenant?.tenantId || created.data?.tenantId;
       setTenantId(id);
       await updateDraft(id, {
-        companyInfo: {
-          tenantName: form.tenantName,
-          fspCode: form.fspCode,
-          fspName: form.fspName || form.tenantName,
-          contactPerson: form.contactPerson,
-          contactEmail: form.contactEmail,
-          contactPhone: form.contactPhone,
-          address: form.address,
-        },
+        companyInfo: buildCompanyInfo(),
         completedSteps: ['organization'],
       });
       navigate(`/onboarding/${id}`, { replace: true });
     } else {
       await updateDraft(tenantId, {
-        companyInfo: {
-          tenantName: form.tenantName,
-          fspCode: form.fspCode,
-          fspName: form.fspName || form.tenantName,
-          contactPerson: form.contactPerson,
-          contactEmail: form.contactEmail,
-          contactPhone: form.contactPhone,
-          address: form.address,
-        },
+        companyInfo: buildCompanyInfo(),
         completedSteps: ['organization'],
       });
     }
@@ -180,7 +221,37 @@ export default function OnboardingWizard() {
             <TextField label="Contact Email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
             <TextField label="Contact Person" value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} />
             <TextField label="Contact Phone" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />
-            <TextField label="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            <Typography variant="subtitle2" sx={{ mt: 1 }}>Address</Typography>
+            <TextField
+              label="Address line 1"
+              value={form.address.line1}
+              onChange={(e) => updateAddress('line1', e.target.value)}
+            />
+            <TextField
+              label="Address line 2 (optional)"
+              value={form.address.line2}
+              onChange={(e) => updateAddress('line2', e.target.value)}
+            />
+            <TextField
+              label="City"
+              value={form.address.city}
+              onChange={(e) => updateAddress('city', e.target.value)}
+            />
+            <TextField
+              label="Region"
+              value={form.address.region}
+              onChange={(e) => updateAddress('region', e.target.value)}
+            />
+            <TextField
+              select
+              label="Country"
+              value={form.address.country}
+              onChange={(e) => updateAddress('country', e.target.value)}
+            >
+              {COUNTRY_OPTIONS.map(({ code, name }) => (
+                <MenuItem key={code} value={code}>{name}</MenuItem>
+              ))}
+            </TextField>
           </Box>
         );
       case 1:
@@ -213,6 +284,12 @@ export default function OnboardingWizard() {
             <Typography>Tenant ID: {tenantId}</Typography>
             <Typography>FSP: {form.tenantName} ({form.fspCode})</Typography>
             <Typography>MIFOS mode: {form.mifosMode}</Typography>
+            {form.address.line1 && (
+              <Typography sx={{ mt: 1 }}>
+                Address: {[form.address.line1, form.address.city, form.address.region].filter(Boolean).join(', ')}
+                {form.address.country ? ` (${form.address.country})` : ''}
+              </Typography>
+            )}
             {health && <Alert severity="info" sx={{ mt: 2 }}>Integration health: {JSON.stringify(health)}</Alert>}
           </Box>
         );

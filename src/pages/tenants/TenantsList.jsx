@@ -48,10 +48,21 @@ export default function TenantsList() {
         decision: reviewDecision,
         reason: reviewReason || undefined,
       });
+
       if (reviewDecision === 'approve') {
-        await patchTenantStatus(reviewOpen.tenantId, { status: 'active' });
+        try {
+          await patchTenantStatus(reviewOpen.tenantId, { status: 'active' });
+          toast.success('Tenant approved and activated');
+        } catch (activateErr) {
+          toast.warn(
+            activateErr.response?.data?.message
+              || 'Tenant approved, but activation failed. Configure valid MIFOS credentials, then use Activate.'
+          );
+        }
+      } else {
+        toast.success('Review completed');
       }
-      toast.success('Review completed');
+
       setReviewOpen(null);
       fetchTenants();
     } catch (err) {
@@ -77,9 +88,13 @@ export default function TenantsList() {
           )}
           {p.row.status === 'approved' && (
             <Button size="small" color="success" onClick={async () => {
-              await patchTenantStatus(p.row.tenantId, { status: 'active' });
-              toast.success('Activated');
-              fetchTenants();
+              try {
+                await patchTenantStatus(p.row.tenantId, { status: 'active' });
+                toast.success('Activated');
+                fetchTenants();
+              } catch (err) {
+                toast.error(err.response?.data?.message || err.message);
+              }
             }}>Activate</Button>
           )}
         </Box>
