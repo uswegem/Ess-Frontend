@@ -4,6 +4,7 @@ import {
   TextField, MenuItem, Box, Alert, Typography, InputAdornment, IconButton,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { DataGrid } from '@mui/x-data-grid';
 import { toast } from 'react-toastify';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
@@ -11,13 +12,8 @@ import { usePermissions } from '../../hooks/usePermissions';
 import {
   listTenantUsers, createTenantUser, updateTenantUser, deactivateTenantUser,
 } from '../../services/userService';
-
-const TENANT_ROLES = [
-  'tenant_admin',
-  'operations_manager',
-  'finance_officer',
-  'support_staff',
-];
+import { TENANT_ROLES } from '../../constants/tenantRolePermissions';
+import RolePermissionsMatrixModal from '../../components/users/RolePermissionsMatrixModal';
 
 function copyToClipboard(value, label) {
   navigator.clipboard.writeText(value).then(
@@ -32,6 +28,7 @@ export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const [rolesMatrixOpen, setRolesMatrixOpen] = useState(false);
   const [credentials, setCredentials] = useState(null);
   const [form, setForm] = useState({
     email: '', fullName: '', role: 'support_staff', username: '', phone: '',
@@ -149,12 +146,27 @@ export default function Users() {
 
   return (
     <div className="p-3">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <h5>Tenant Users</h5>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Typography variant="h5" component="h1">Tenant Users</Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<InfoOutlinedIcon />}
+            onClick={() => setRolesMatrixOpen(true)}
+          >
+            Roles &amp; permissions
+          </Button>
+        </Box>
         {can('users:manage') && (
           <Button variant="contained" onClick={() => setOpen(true)}>Invite User</Button>
         )}
       </Box>
+
+      <RolePermissionsMatrixModal
+        open={rolesMatrixOpen}
+        onClose={() => setRolesMatrixOpen(false)}
+      />
       <Paper sx={{ height: 520 }}>
         <DataGrid rows={users} columns={columns} loading={loading} pageSizeOptions={[10, 25]} />
       </Paper>
