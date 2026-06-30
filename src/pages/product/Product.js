@@ -41,6 +41,7 @@ const emptyProductFields = {
         forExecutive: false,
         shariaFacility: false,
         deductionCode: "",
+        mifosProductId: "",
 };
 
 const Product = () => {
@@ -147,6 +148,7 @@ const Product = () => {
             description: term.description,
             effectiveDate: term.effectiveDate,
         })),
+        mifosProductId: formData.mifosProductId ? Number(formData.mifosProductId) : undefined,
     });
 
     const createProduct = async (formData) => {
@@ -314,7 +316,7 @@ const Product = () => {
                 repaymentType: p.repaymentType,
                 insuranceType: p.insuranceType,
                 forExecutive: p.forExecutive ? "Yes" : "No",
-                shariaFacility: p.shariaFacility ? "Yes" : "No",
+                mifosProductId: p.mifosProductId ?? '—',
             }));
             setLoanProducts(newData);
         } catch (err) {
@@ -388,6 +390,7 @@ const Product = () => {
 
     const columns = [
         { field: "productCode", headerName: "Product Code", width: 120 },
+        { field: "mifosProductId", headerName: "MIFOS ID", width: 100 },
         { field: "name", headerName: "Product Name", width: 200 },
         { field: "deductionCode", headerName: "Deduction Code", width: 130 },
         { field: "minTenure", headerName: "Min Tenure", width: 110 },
@@ -527,6 +530,15 @@ const Product = () => {
                                 onChange={(e) => handleFormChange("deductionCode", e.target.value)}
                                 error={!!errors.deductionCode}
                                 helperText={errors.deductionCode}
+                            />
+                            <TextField
+                                label="MIFOS Product ID"
+                                type="number"
+                                fullWidth
+                                size="small"
+                                value={form.mifosProductId}
+                                onChange={(e) => handleFormChange("mifosProductId", e.target.value)}
+                                helperText="Fineract loan product ID (e.g. 17)"
                             />
                             {/* Product Description */}
                             <TextField

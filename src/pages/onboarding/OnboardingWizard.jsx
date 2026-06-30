@@ -1,30 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Box, Stepper, Step, StepLabel, Button, TextField, Typography, Paper,
-  MenuItem, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
+  Box, Stepper, Step, StepLabel, Button, Typography, Paper,
+  Dialog, DialogTitle, DialogContent, DialogActions, Alert,
 } from '@mui/material';
 import { toast } from 'react-toastify';
 import {
   validateFspCode, createDraft, getDraft, updateDraft, submitOnboarding,
 } from '../../services/onboardingService';
-import { validateMifosConfig, getIntegrationHealth } from '../../services/tenantService';
+import { validateMifosConfig, getIntegrationHealth, uploadCertificates } from '../../services/tenantService';
 import { createApiKey } from '../../services/apiKeyService';
 import { buildMifosConfigPayload } from '../../utils/mifosConfig';
+import CompanyInfo from '../../components/OnboardingWizard/CompanyInfo';
+import MifosConfig from '../../components/OnboardingWizard/MifosConfig';
+import ApiKeySetup from '../../components/OnboardingWizard/ApiKeySetup';
+import ReviewStep from '../../components/OnboardingWizard/ReviewStep';
+import SuccessScreen from '../../components/OnboardingWizard/SuccessScreen';
 
-const STEPS = ['Organization', 'MIFOS Config', 'API Keys', 'Review', 'Submit'];
-
-const COUNTRY_OPTIONS = [
-  { code: 'TZ', name: 'Tanzania' },
-  { code: 'KE', name: 'Kenya' },
-  { code: 'UG', name: 'Uganda' },
-  { code: 'RW', name: 'Rwanda' },
-  { code: 'BI', name: 'Burundi' },
-  { code: 'ZM', name: 'Zambia' },
-  { code: 'MW', name: 'Malawi' },
-  { code: 'MZ', name: 'Mozambique' },
-  { code: 'ZA', name: 'South Africa' },
-];
+const STEPS = ['Organization', 'MIFOS Config', 'API Keys & Certificates', 'Review', 'Submit'];
 
 const EMPTY_ADDRESS = {
   line1: '',
@@ -38,10 +31,13 @@ export default function OnboardingWizard() {
   const { tenantId: routeTenantId } = useParams();
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
   const [tenantId, setTenantId] = useState(routeTenantId || '');
   const [fspAvailable, setFspAvailable] = useState(null);
   const [health, setHealth] = useState(null);
   const [keyModal, setKeyModal] = useState(null);
+  const [certFiles, setCertFiles] = useState({ publicCert: null, privateKey: null });
+  const [certsUploaded, setCertsUploaded] = useState(false);
   const [form, setForm] = useState({
     tenantName: '',
     fspCode: '',
@@ -111,7 +107,6 @@ export default function OnboardingWizard() {
       contactEmail: form.contactEmail,
       contactPhone: form.contactPhone,
     };
-
     const { line1, line2, city, region, country } = form.address;
     if (line1?.trim() || line2?.trim() || city?.trim() || region?.trim()) {
       companyInfo.address = {
@@ -122,7 +117,6 @@ export default function OnboardingWizard() {
         country: country || 'TZ',
       };
     }
-
     return companyInfo;
   };
 
@@ -172,31 +166,43 @@ export default function OnboardingWizard() {
     return true;
   };
 
-  const createFirstKey = async () => {
-    if (!form.apiKeyName) return true;
-    const result = await createApiKey(tenantId, { name: form.apiKeyName });
-    setKeyModal(result.data);
-    await updateDraft(tenantId, { completedSteps: ['organization', 'mifos', 'api_keys'] });
+  const uploadCertsIfProvided = async () => {
+    if (!certFiles.publicCert || !certFiles.privateKey) return true;
+    const fd = new FormData();
+    fd.append('publicCert', certFiles.publicCert);
+    fd.append('privateKey', certFiles.privateKey);
+    await uploadCertificates(tenantId, fd);
+    setCertsUploaded(true);
+    return true;
+  };
+
+  const saveApiKeysAndCerts = async () => {
+    if (form.apiKeyName?.trim()) {
+      const result = await createApiKey(tenantId, { name: form.apiKeyName.trim() });
+      setKeyModal(result.data);
+    }
+    await uploadCertsIfProvided();
+    await updateDraft(tenantId, { completedSteps: ['organization', 'mifos', 'api_keys', 'certificates'] });
     return true;
   };
 
   const loadReview = async () => {
     const h = await getIntegrationHealth(tenantId);
     setHealth(h.data);
-    await updateDraft(tenantId, { completedSteps: ['organization', 'mifos', 'api_keys', 'review'] });
+    await updateDraft(tenantId, { completedSteps: ['organization', 'mifos', 'api_keys', 'certificates', 'review'] });
   };
 
   const handleSubmit = async () => {
     await submitOnboarding(tenantId);
+    setSubmitted(true);
     toast.success('FSP submitted for review');
-    navigate('/tenants');
   };
 
   const handleNext = async () => {
     try {
       if (activeStep === 0 && !(await saveOrganization())) return;
       if (activeStep === 1 && !(await saveMifos())) return;
-      if (activeStep === 2) await createFirstKey();
+      if (activeStep === 2) await saveApiKeysAndCerts();
       if (activeStep === 3) await loadReview();
       if (activeStep === 4) {
         await handleSubmit();
@@ -208,99 +214,43 @@ export default function OnboardingWizard() {
     }
   };
 
+  if (submitted) {
+    return (
+      <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
+        <SuccessScreen tenantId={tenantId} onContinue={() => navigate('/tenants')} />
+      </Box>
+    );
+  }
+
   const renderStep = () => {
     switch (activeStep) {
       case 0:
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField label="FSP Name" value={form.tenantName} onChange={(e) => setForm({ ...form, tenantName: e.target.value })} />
-            <TextField label="FSP Code" value={form.fspCode} onChange={(e) => setForm({ ...form, fspCode: e.target.value.toUpperCase() })} />
-            <Button size="small" onClick={async () => {
+          <CompanyInfo
+            form={form}
+            setForm={setForm}
+            updateAddress={updateAddress}
+            fspAvailable={fspAvailable}
+            onCheckAvailability={async () => {
               const r = await validateFspCode(form.fspCode, tenantId);
               setFspAvailable(r.data?.available);
-            }}>Check availability</Button>
-            {fspAvailable === false && <Alert severity="error">FSP code taken</Alert>}
-            {fspAvailable === true && <Alert severity="success">FSP code available</Alert>}
-            <TextField label="Contact Email" value={form.contactEmail} onChange={(e) => setForm({ ...form, contactEmail: e.target.value })} />
-            <TextField label="Contact Person" value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} />
-            <TextField label="Contact Phone" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />
-            <Typography variant="subtitle2" sx={{ mt: 1 }}>Address</Typography>
-            <TextField
-              label="Address line 1"
-              value={form.address.line1}
-              onChange={(e) => updateAddress('line1', e.target.value)}
-            />
-            <TextField
-              label="Address line 2 (optional)"
-              value={form.address.line2}
-              onChange={(e) => updateAddress('line2', e.target.value)}
-            />
-            <TextField
-              label="City"
-              value={form.address.city}
-              onChange={(e) => updateAddress('city', e.target.value)}
-            />
-            <TextField
-              label="Region"
-              value={form.address.region}
-              onChange={(e) => updateAddress('region', e.target.value)}
-            />
-            <TextField
-              select
-              label="Country"
-              value={form.address.country}
-              onChange={(e) => updateAddress('country', e.target.value)}
-            >
-              {COUNTRY_OPTIONS.map(({ code, name }) => (
-                <MenuItem key={code} value={code}>{name}</MenuItem>
-              ))}
-            </TextField>
-          </Box>
+            }}
+          />
         );
       case 1:
-        return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField select label="MIFOS Mode" value={form.mifosMode} onChange={(e) => setForm({ ...form, mifosMode: e.target.value })}>
-              <MenuItem value="inherit_default">Inherit platform default</MenuItem>
-              <MenuItem value="override">Override (own Fineract)</MenuItem>
-            </TextField>
-            {form.mifosMode === 'override' && (
-              <>
-                <TextField
-                  label="Base URL"
-                  helperText="e.g. https://host/fineract-provider/api (no /v1 suffix)"
-                  value={form.mifosBaseUrl}
-                  onChange={(e) => setForm({ ...form, mifosBaseUrl: e.target.value })}
-                />
-                <TextField label="Fineract Tenant ID" value={form.mifosTenantId} onChange={(e) => setForm({ ...form, mifosTenantId: e.target.value })} />
-                <TextField label="Maker username" value={form.mifosUsername} onChange={(e) => setForm({ ...form, mifosUsername: e.target.value })} />
-                <TextField type="password" label="Password" value={form.mifosPassword} onChange={(e) => setForm({ ...form, mifosPassword: e.target.value })} />
-              </>
-            )}
-          </Box>
-        );
+        return <MifosConfig form={form} setForm={setForm} />;
       case 2:
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography>Create first API key (optional — can skip with empty name)</Typography>
-            <TextField label="Key name" value={form.apiKeyName} onChange={(e) => setForm({ ...form, apiKeyName: e.target.value })} />
-          </Box>
+          <ApiKeySetup
+            form={form}
+            setForm={setForm}
+            certFiles={certFiles}
+            setCertFiles={setCertFiles}
+            certsUploaded={certsUploaded}
+          />
         );
       case 3:
-        return (
-          <Box>
-            <Typography>Tenant ID: {tenantId}</Typography>
-            <Typography>FSP: {form.tenantName} ({form.fspCode})</Typography>
-            <Typography>MIFOS mode: {form.mifosMode}</Typography>
-            {form.address.line1 && (
-              <Typography sx={{ mt: 1 }}>
-                Address: {[form.address.line1, form.address.city, form.address.region].filter(Boolean).join(', ')}
-                {form.address.country ? ` (${form.address.country})` : ''}
-              </Typography>
-            )}
-            {health && <Alert severity="info" sx={{ mt: 2 }}>Integration health: {JSON.stringify(health)}</Alert>}
-          </Box>
-        );
+        return <ReviewStep tenantId={tenantId} form={form} health={health} />;
       case 4:
         return <Alert severity="warning">Submit this FSP for platform review. You can approve it from the Tenants page.</Alert>;
       default:

@@ -17,13 +17,10 @@ import {
 } from '../../services/apiKeyService';
 import { listTenants } from '../../services/tenantService';
 import { buildMifosConfigPayload, buildMifosValidatePayload, mifosConfigFromTenant } from '../../utils/mifosConfig';
+import { isApiKeyActive } from '../../utils/apiKeyUtils';
 
 function getApiErrorMessage(err, fallback = 'Something went wrong. Please try again.') {
   return err?.response?.data?.message || err?.message || fallback;
-}
-
-function isApiKeyActive(status) {
-  return status === 'active';
 }
 
 function TabPanel({ children, value, index }) {
@@ -102,6 +99,10 @@ export default function Settings() {
         contactPerson: profile.contactPerson,
         contactPhone: profile.contactPhone,
         address: profile.address,
+        subscription: profile.subscription ? {
+          plan: profile.subscription.plan || 'standard',
+          monthlyLimit: profile.subscription.monthlyLimit,
+        } : undefined,
       });
       toast.success('Profile saved successfully', { id: toastId });
     } catch (err) {
@@ -235,6 +236,37 @@ export default function Settings() {
           <TextField label="Contact Email" value={profile.contactEmail || ''} onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })} />
           <TextField label="Contact Person" value={profile.contactPerson || ''} onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })} />
           <TextField label="Phone" value={profile.contactPhone || ''} onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })} />
+          {can('tenant:update') && (
+            <>
+              <Typography variant="subtitle2" sx={{ mt: 1 }}>Subscription</Typography>
+              <TextField
+                select
+                label="Plan"
+                value={profile.subscription?.plan || 'standard'}
+                onChange={(e) => setProfile({
+                  ...profile,
+                  subscription: { ...profile.subscription, plan: e.target.value },
+                })}
+              >
+                <MenuItem value="trial">Trial</MenuItem>
+                <MenuItem value="standard">Standard</MenuItem>
+                <MenuItem value="enterprise">Enterprise</MenuItem>
+              </TextField>
+              <TextField
+                type="number"
+                label="Monthly transaction limit"
+                value={profile.subscription?.monthlyLimit ?? ''}
+                onChange={(e) => setProfile({
+                  ...profile,
+                  subscription: {
+                    ...profile.subscription,
+                    plan: profile.subscription?.plan || 'standard',
+                    monthlyLimit: Number(e.target.value),
+                  },
+                })}
+              />
+            </>
+          )}
           {can('tenant:update') && <Button variant="contained" onClick={saveProfile}>Save</Button>}
         </Paper>
       </TabPanel>

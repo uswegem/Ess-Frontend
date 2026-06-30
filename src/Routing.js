@@ -13,7 +13,7 @@ export default function Routing() {
     <Routes>
       <Route element={<Private />}>
         {routes.map(({ path, Component }) => (
-          <Route path={path} key={path} element={<Suspense fallback={<Loader />}>{Component}</Suspense>} />
+          <Route path={path} key={path} element={<Suspense fallback={<Loader />}><Component /></Suspense>} />
         ))}
       </Route>
       <Route path="/" element={<Login />} />

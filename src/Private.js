@@ -3,6 +3,7 @@ import { usePermissions } from './hooks/usePermissions';
 
 const ROUTE_PERMISSIONS = {
   '/users': 'users:manage',
+  '/settings': 'tenant:read',
   '/settings/api-keys': 'api_keys:manage',
   '/settings/mifos': 'tenant:update',
   '/settings/certificates': 'tenant:update',

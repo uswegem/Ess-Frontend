@@ -46,6 +46,7 @@ const API = {
   DASHBOARD_OVERVIEW: '/dashboard/overview',
   DASHBOARD_ACTIVITY: '/dashboard/activity',
   DASHBOARD_MESSAGES: '/dashboard/messages',
+  MIFOS_HEALTH: '/mifos/health',
   AUDIT_LOGS: '/audit/logs',
   AUDIT_STATS: '/audit/stats',
 
