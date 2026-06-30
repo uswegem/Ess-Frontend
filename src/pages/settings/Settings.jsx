@@ -16,6 +16,7 @@ import {
   listApiKeys, createApiKey, revokeApiKey, rotateApiKey,
 } from '../../services/apiKeyService';
 import { listTenants } from '../../services/tenantService';
+import { buildMifosConfigPayload, mifosConfigFromTenant } from '../../utils/mifosConfig';
 
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null;
@@ -65,7 +66,7 @@ export default function Settings() {
       const t = await getTenant(tenantId);
       const data = t.data?.tenant || t.data;
       setProfile(data);
-      setMifos(data.mifosConfig || { mode: 'inherit_default' });
+      setMifos(mifosConfigFromTenant(data.mifosConfig));
       if (can('api_keys:manage')) {
         const k = await listApiKeys(tenantId);
         setKeys(k.data?.apiKeys || k.data?.keys || []);
@@ -93,7 +94,8 @@ export default function Settings() {
   };
 
   const saveMifos = async () => {
-    await saveMifosConfig(tenantId, mifos);
+    const payload = buildMifosConfigPayload(mifos);
+    await saveMifosConfig(tenantId, payload);
     toast.success('MIFOS config saved');
   };
 
@@ -147,17 +149,22 @@ export default function Settings() {
             </TextField>
             {mifos.mode === 'override' && (
               <>
-                <TextField label="Base URL" value={mifos.baseUrl || ''} onChange={(e) => setMifos({ ...mifos, baseUrl: e.target.value })} />
+                <TextField
+                  label="Base URL"
+                  helperText="e.g. https://host/fineract-provider/api (no /v1 suffix)"
+                  value={mifos.baseUrl || ''}
+                  onChange={(e) => setMifos({ ...mifos, baseUrl: e.target.value })}
+                />
                 <TextField label="Fineract Tenant" value={mifos.tenantId || ''} onChange={(e) => setMifos({ ...mifos, tenantId: e.target.value })} />
-                <TextField label="Username" value={mifos.username || ''} onChange={(e) => setMifos({ ...mifos, username: e.target.value })} />
-                <TextField type="password" label="Password" value={mifos.password || ''} onChange={(e) => setMifos({ ...mifos, password: e.target.value })} />
+                <TextField label="Maker username" value={mifos.makerUsername || ''} onChange={(e) => setMifos({ ...mifos, makerUsername: e.target.value })} />
+                <TextField type="password" label="Maker password" value={mifos.makerPassword || ''} onChange={(e) => setMifos({ ...mifos, makerPassword: e.target.value })} />
               </>
             )}
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button variant="contained" onClick={saveMifos}>Save</Button>
               <Button onClick={async () => {
                 const r = await validateMifosConfig(tenantId);
-                toast.info(r.data?.valid ? 'MIFOS valid' : 'MIFOS invalid');
+                toast.info(r.data?.valid ? 'MIFOS valid' : (r.data?.message || 'MIFOS invalid'));
               }}>Validate</Button>
             </Box>
           </Paper>

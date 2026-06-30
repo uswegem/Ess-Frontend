@@ -10,6 +10,7 @@ import {
 } from '../../services/onboardingService';
 import { validateMifosConfig, getIntegrationHealth } from '../../services/tenantService';
 import { createApiKey } from '../../services/apiKeyService';
+import { buildMifosConfigPayload } from '../../utils/mifosConfig';
 
 const STEPS = ['Organization', 'MIFOS Config', 'API Keys', 'Review', 'Submit'];
 
@@ -93,6 +94,8 @@ export default function OnboardingWizard() {
         mifosMode: t.mifosConfig?.mode || f.mifosMode,
         mifosBaseUrl: t.mifosConfig?.baseUrl || f.mifosBaseUrl,
         mifosTenantId: t.mifosConfig?.tenantId || f.mifosTenantId,
+        mifosUsername: t.mifosConfig?.makerUsername || f.mifosUsername,
+        mifosPassword: '',
       }));
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
@@ -152,20 +155,20 @@ export default function OnboardingWizard() {
   };
 
   const saveMifos = async () => {
-    const mifosConfig = form.mifosMode === 'override'
-      ? {
-        mode: 'override',
-        baseUrl: form.mifosBaseUrl,
-        tenantId: form.mifosTenantId,
-        username: form.mifosUsername,
-        password: form.mifosPassword,
-      }
-      : { mode: 'inherit_default' };
+    const mifosConfig = buildMifosConfigPayload({
+      mode: form.mifosMode,
+      baseUrl: form.mifosBaseUrl,
+      tenantId: form.mifosTenantId,
+      makerUsername: form.mifosUsername,
+      makerPassword: form.mifosPassword,
+    });
     await updateDraft(tenantId, { mifosConfig, completedSteps: ['organization', 'mifos'] });
     const valid = await validateMifosConfig(tenantId);
-    if (!valid.data?.valid && form.mifosMode === 'override') {
-      toast.warn('MIFOS validation failed — check credentials');
+    if (!valid.data?.valid) {
+      toast.warn(valid.data?.message || 'MIFOS validation failed — check credentials');
+      return false;
     }
+    toast.success('MIFOS configuration validated');
     return true;
   };
 
@@ -192,7 +195,7 @@ export default function OnboardingWizard() {
   const handleNext = async () => {
     try {
       if (activeStep === 0 && !(await saveOrganization())) return;
-      if (activeStep === 1) await saveMifos();
+      if (activeStep === 1 && !(await saveMifos())) return;
       if (activeStep === 2) await createFirstKey();
       if (activeStep === 3) await loadReview();
       if (activeStep === 4) {
@@ -263,9 +266,14 @@ export default function OnboardingWizard() {
             </TextField>
             {form.mifosMode === 'override' && (
               <>
-                <TextField label="Base URL" value={form.mifosBaseUrl} onChange={(e) => setForm({ ...form, mifosBaseUrl: e.target.value })} />
+                <TextField
+                  label="Base URL"
+                  helperText="e.g. https://host/fineract-provider/api (no /v1 suffix)"
+                  value={form.mifosBaseUrl}
+                  onChange={(e) => setForm({ ...form, mifosBaseUrl: e.target.value })}
+                />
                 <TextField label="Fineract Tenant ID" value={form.mifosTenantId} onChange={(e) => setForm({ ...form, mifosTenantId: e.target.value })} />
-                <TextField label="Username" value={form.mifosUsername} onChange={(e) => setForm({ ...form, mifosUsername: e.target.value })} />
+                <TextField label="Maker username" value={form.mifosUsername} onChange={(e) => setForm({ ...form, mifosUsername: e.target.value })} />
                 <TextField type="password" label="Password" value={form.mifosPassword} onChange={(e) => setForm({ ...form, mifosPassword: e.target.value })} />
               </>
             )}
