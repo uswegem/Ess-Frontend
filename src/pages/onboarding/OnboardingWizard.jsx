@@ -163,7 +163,7 @@ export default function OnboardingWizard() {
       makerPassword: form.mifosPassword,
     });
     await updateDraft(tenantId, { mifosConfig, completedSteps: ['organization', 'mifos'] });
-    const valid = await validateMifosConfig(tenantId);
+    const valid = await validateMifosConfig(tenantId, mifosConfig);
     if (!valid.data?.valid) {
       toast.warn(valid.data?.message || 'MIFOS validation failed — check credentials');
       return false;

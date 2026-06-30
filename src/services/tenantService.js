@@ -19,8 +19,8 @@ export const patchTenantStatus = (tenantId, payload) =>
 export const saveMifosConfig = (tenantId, payload) =>
   putRequest(API.tenantMifosConfig(tenantId), payload).then((r) => r.data);
 
-export const validateMifosConfig = (tenantId) =>
-  postRequest(API.tenantMifosValidate(tenantId), {}).then((r) => r.data);
+export const validateMifosConfig = (tenantId, payload = {}) =>
+  postRequest(API.tenantMifosValidate(tenantId), payload).then((r) => r.data);
 
 export const getIntegrationHealth = (tenantId) =>
   getRequest(API.tenantIntegrationHealth(tenantId)).then((r) => r.data);

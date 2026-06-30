@@ -1,4 +1,10 @@
-export function buildMifosConfigPayload({ mode, baseUrl, tenantId, makerUsername, makerPassword }) {
+export function buildMifosValidatePayload({
+  mode,
+  baseUrl,
+  tenantId,
+  makerUsername,
+  makerPassword,
+}) {
   if (mode !== 'override') {
     return { mode: 'inherit_default' };
   }
@@ -19,6 +25,10 @@ export function buildMifosConfigPayload({ mode, baseUrl, tenantId, makerUsername
   return payload;
 }
 
+export function buildMifosConfigPayload(args) {
+  return buildMifosValidatePayload(args);
+}
+
 export function mifosConfigFromTenant(mifosConfig = {}) {
   return {
     mode: mifosConfig.mode || 'inherit_default',
@@ -26,5 +36,6 @@ export function mifosConfigFromTenant(mifosConfig = {}) {
     tenantId: mifosConfig.tenantId || '',
     makerUsername: mifosConfig.makerUsername || '',
     makerPassword: '',
+    hasMakerPassword: Boolean(mifosConfig.hasMakerPassword),
   };
 }

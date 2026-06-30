@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Box, Tabs, Tab, TextField, Button, Paper, Typography, MenuItem,
-  Dialog, DialogTitle, DialogContent, DialogActions, Alert,
+  Dialog, DialogTitle, DialogContent, DialogActions, Alert, CircularProgress,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { toast } from 'react-toastify';
+import toast from 'react-hot-toast';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { usePermissions } from '../../hooks/usePermissions';
 import {
@@ -16,7 +16,15 @@ import {
   listApiKeys, createApiKey, revokeApiKey, rotateApiKey,
 } from '../../services/apiKeyService';
 import { listTenants } from '../../services/tenantService';
-import { buildMifosConfigPayload, mifosConfigFromTenant } from '../../utils/mifosConfig';
+import { buildMifosConfigPayload, buildMifosValidatePayload, mifosConfigFromTenant } from '../../utils/mifosConfig';
+
+function getApiErrorMessage(err, fallback = 'Something went wrong. Please try again.') {
+  return err?.response?.data?.message || err?.message || fallback;
+}
+
+function isApiKeyActive(status) {
+  return status === 'active';
+}
 
 function TabPanel({ children, value, index }) {
   return value === index ? <Box sx={{ pt: 2 }}>{children}</Box> : null;
@@ -36,6 +44,9 @@ export default function Settings() {
   const [keyModal, setKeyModal] = useState(null);
   const [newKeyName, setNewKeyName] = useState('Production');
   const [certFiles, setCertFiles] = useState({ publicCert: null, privateKey: null, caCert: null });
+  const [mifosSaving, setMifosSaving] = useState(false);
+  const [mifosValidating, setMifosValidating] = useState(false);
+  const [keyActionLoading, setKeyActionLoading] = useState(null);
 
   const tenantId = selectedTenantId || activeTenantId;
 
@@ -76,33 +87,121 @@ export default function Settings() {
         setCerts(c.data);
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message);
+      toast.error(getApiErrorMessage(err));
     }
   };
 
   useEffect(() => { loadAll(); }, [tenantId]);
 
   const saveProfile = async () => {
-    await updateTenant(tenantId, {
-      tenantName: profile.tenantName,
-      contactEmail: profile.contactEmail,
-      contactPerson: profile.contactPerson,
-      contactPhone: profile.contactPhone,
-      address: profile.address,
-    });
-    toast.success('Profile saved');
+    const toastId = toast.loading('Saving profile...');
+    try {
+      await updateTenant(tenantId, {
+        tenantName: profile.tenantName,
+        contactEmail: profile.contactEmail,
+        contactPerson: profile.contactPerson,
+        contactPhone: profile.contactPhone,
+        address: profile.address,
+      });
+      toast.success('Profile saved successfully', { id: toastId });
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to save profile'), { id: toastId });
+    }
   };
 
   const saveMifos = async () => {
-    const payload = buildMifosConfigPayload(mifos);
-    await saveMifosConfig(tenantId, payload);
-    toast.success('MIFOS config saved');
+    setMifosSaving(true);
+    const toastId = toast.loading('Saving MIFOS configuration...');
+    try {
+      const payload = buildMifosConfigPayload(mifos);
+      const result = await saveMifosConfig(tenantId, payload);
+      const tenant = result.data?.tenant || result.tenant;
+      if (tenant?.mifosConfig) {
+        setMifos(mifosConfigFromTenant(tenant.mifosConfig));
+      }
+      toast.success('MIFOS configuration saved successfully', { id: toastId });
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to save MIFOS configuration'), { id: toastId });
+    } finally {
+      setMifosSaving(false);
+    }
+  };
+
+  const validateMifos = async () => {
+    setMifosValidating(true);
+    const toastId = toast.loading('Validating MIFOS connection...');
+    try {
+      const result = await validateMifosConfig(tenantId, buildMifosValidatePayload(mifos));
+      const validation = result.data || result;
+      if (validation.valid) {
+        const usedStoredPassword = mifos.mode === 'override'
+          && mifos.hasMakerPassword
+          && !mifos.makerPassword;
+        toast.success(
+          usedStoredPassword
+            ? 'MIFOS connection validated using the saved password'
+            : 'MIFOS connection validated successfully',
+          { id: toastId }
+        );
+      } else {
+        toast.error(
+          validation.message || 'MIFOS validation failed. Check your credentials and try again.',
+          { id: toastId }
+        );
+      }
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'MIFOS validation failed'), { id: toastId });
+    } finally {
+      setMifosValidating(false);
+    }
   };
 
   const handleCreateKey = async () => {
-    const result = await createApiKey(tenantId, { name: newKeyName });
-    setKeyModal(result.data);
-    loadAll();
+    if (!newKeyName?.trim()) {
+      toast.error('Enter a name for the API key');
+      return;
+    }
+    setKeyActionLoading('create');
+    const toastId = toast.loading('Creating API key...');
+    try {
+      const result = await createApiKey(tenantId, { name: newKeyName.trim() });
+      setKeyModal(result.data || result);
+      toast.success('API key created. Copy the credentials now — they are shown only once.', { id: toastId });
+      loadAll();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to create API key'), { id: toastId });
+    } finally {
+      setKeyActionLoading(null);
+    }
+  };
+
+  const handleRotateKey = async (keyId) => {
+    setKeyActionLoading(`rotate-${keyId}`);
+    const toastId = toast.loading('Rotating API key...');
+    try {
+      const result = await rotateApiKey(tenantId, keyId);
+      setKeyModal(result.data || result);
+      toast.success('API key rotated. Update integrations with the new credentials.', { id: toastId });
+      loadAll();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to rotate API key'), { id: toastId });
+    } finally {
+      setKeyActionLoading(null);
+    }
+  };
+
+  const handleRevokeKey = async (keyId) => {
+    setKeyActionLoading(`revoke-${keyId}`);
+    const toastId = toast.loading('Revoking API key...');
+    try {
+      await revokeApiKey(tenantId, keyId);
+      toast.success('API key revoked', { id: toastId });
+      loadAll();
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to revoke API key'), { id: toastId });
+    } finally {
+      setKeyActionLoading(null);
+    }
   };
 
   if (!tenantId) {
@@ -148,24 +247,71 @@ export default function Settings() {
               <MenuItem value="override">Override</MenuItem>
             </TextField>
             {mifos.mode === 'override' && (
-              <>
+              <Box component="form" autoComplete="off" onSubmit={(e) => e.preventDefault()}>
                 <TextField
                   label="Base URL"
                   helperText="e.g. https://host/fineract-provider/api (no /v1 suffix)"
                   value={mifos.baseUrl || ''}
                   onChange={(e) => setMifos({ ...mifos, baseUrl: e.target.value })}
+                  fullWidth
+                  sx={{ mb: 2 }}
                 />
-                <TextField label="Fineract Tenant" value={mifos.tenantId || ''} onChange={(e) => setMifos({ ...mifos, tenantId: e.target.value })} />
-                <TextField label="Maker username" value={mifos.makerUsername || ''} onChange={(e) => setMifos({ ...mifos, makerUsername: e.target.value })} />
-                <TextField type="password" label="Maker password" value={mifos.makerPassword || ''} onChange={(e) => setMifos({ ...mifos, makerPassword: e.target.value })} />
-              </>
+                <TextField
+                  label="Fineract Tenant"
+                  value={mifos.tenantId || ''}
+                  onChange={(e) => setMifos({ ...mifos, tenantId: e.target.value })}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  label="Maker username"
+                  name="mifos-maker-username"
+                  autoComplete="off"
+                  value={mifos.makerUsername || ''}
+                  onChange={(e) => setMifos({ ...mifos, makerUsername: e.target.value })}
+                  fullWidth
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  key={`mifos-password-${tenantId}`}
+                  type="password"
+                  label="Maker password"
+                  name="mifos-maker-credential"
+                  autoComplete="new-password"
+                  placeholder={mifos.hasMakerPassword ? 'Leave blank to keep saved password' : 'Enter maker password'}
+                  helperText={
+                    mifos.hasMakerPassword
+                      ? 'A password is stored securely on the server. Leave blank to keep it, or type a new one to replace.'
+                      : 'Enter the MIFOS maker password for this tenant.'
+                  }
+                  value={mifos.makerPassword || ''}
+                  onChange={(e) => setMifos({ ...mifos, makerPassword: e.target.value })}
+                  onInput={(e) => setMifos({ ...mifos, makerPassword: e.target.value })}
+                  inputProps={{
+                    autoComplete: 'new-password',
+                    'data-lpignore': 'true',
+                    'data-1p-ignore': 'true',
+                  }}
+                  fullWidth
+                />
+              </Box>
             )}
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <Button variant="contained" onClick={saveMifos}>Save</Button>
-              <Button onClick={async () => {
-                const r = await validateMifosConfig(tenantId);
-                toast.info(r.data?.valid ? 'MIFOS valid' : (r.data?.message || 'MIFOS invalid'));
-              }}>Validate</Button>
+              <Button
+                variant="contained"
+                onClick={saveMifos}
+                disabled={mifosSaving || mifosValidating}
+                startIcon={mifosSaving ? <CircularProgress size={18} color="inherit" /> : null}
+              >
+                {mifosSaving ? 'Saving...' : 'Save'}
+              </Button>
+              <Button
+                onClick={validateMifos}
+                disabled={mifosSaving || mifosValidating}
+                startIcon={mifosValidating ? <CircularProgress size={18} /> : null}
+              >
+                {mifosValidating ? 'Validating...' : 'Validate'}
+              </Button>
             </Box>
           </Paper>
         </TabPanel>
@@ -175,7 +321,14 @@ export default function Settings() {
         <TabPanel value={tab} index={can('tenant:update') ? 2 : 1}>
           <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
             <TextField size="small" label="Key name" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
-            <Button variant="contained" onClick={handleCreateKey}>Create Key</Button>
+            <Button
+              variant="contained"
+              onClick={handleCreateKey}
+              disabled={Boolean(keyActionLoading)}
+              startIcon={keyActionLoading === 'create' ? <CircularProgress size={18} color="inherit" /> : null}
+            >
+              {keyActionLoading === 'create' ? 'Creating...' : 'Create Key'}
+            </Button>
           </Box>
           <Paper sx={{ height: 360 }}>
             <DataGrid
@@ -186,19 +339,41 @@ export default function Settings() {
                 { field: 'status', headerName: 'Status', width: 100 },
                 {
                   field: 'actions', headerName: 'Actions', width: 200,
-                  renderCell: (p) => (
-                    <Box>
-                      <Button size="small" onClick={async () => {
-                        const r = await rotateApiKey(tenantId, p.row.id);
-                        setKeyModal(r.data);
-                        loadAll();
-                      }}>Rotate</Button>
-                      <Button size="small" color="error" onClick={async () => {
-                        await revokeApiKey(tenantId, p.row.id);
-                        loadAll();
-                      }}>Revoke</Button>
-                    </Box>
-                  ),
+                  renderCell: (p) => {
+                    if (!isApiKeyActive(p.row.status)) {
+                      return (
+                        <Typography variant="body2" color="text.secondary" sx={{ lineHeight: '36px' }}>
+                          No actions
+                        </Typography>
+                      );
+                    }
+
+                    const rotating = keyActionLoading === `rotate-${p.row.id}`;
+                    const revoking = keyActionLoading === `revoke-${p.row.id}`;
+                    const busy = Boolean(keyActionLoading);
+
+                    return (
+                      <Box>
+                        <Button
+                          size="small"
+                          disabled={busy}
+                          onClick={() => handleRotateKey(p.row.id)}
+                          startIcon={rotating ? <CircularProgress size={14} /> : null}
+                        >
+                          {rotating ? 'Rotating...' : 'Rotate'}
+                        </Button>
+                        <Button
+                          size="small"
+                          color="error"
+                          disabled={busy}
+                          onClick={() => handleRevokeKey(p.row.id)}
+                          startIcon={revoking ? <CircularProgress size={14} /> : null}
+                        >
+                          {revoking ? 'Revoking...' : 'Revoke'}
+                        </Button>
+                      </Box>
+                    );
+                  },
                 },
               ]}
             />
@@ -220,19 +395,29 @@ export default function Settings() {
               <Button variant="outlined" component="label">Private key<input hidden type="file" onChange={(e) => setCertFiles({ ...certFiles, privateKey: e.target.files[0] })} /></Button>
               <Button variant="outlined" component="label">CA cert (optional)<input hidden type="file" onChange={(e) => setCertFiles({ ...certFiles, caCert: e.target.files[0] })} /></Button>
               <Button variant="contained" onClick={async () => {
-                const fd = new FormData();
-                if (certFiles.publicCert) fd.append('publicCert', certFiles.publicCert);
-                if (certFiles.privateKey) fd.append('privateKey', certFiles.privateKey);
-                if (certFiles.caCert) fd.append('caCert', certFiles.caCert);
-                await uploadCertificates(tenantId, fd);
-                toast.success('Certificates uploaded');
-                loadAll();
+                const toastId = toast.loading('Uploading certificates...');
+                try {
+                  const fd = new FormData();
+                  if (certFiles.publicCert) fd.append('publicCert', certFiles.publicCert);
+                  if (certFiles.privateKey) fd.append('privateKey', certFiles.privateKey);
+                  if (certFiles.caCert) fd.append('caCert', certFiles.caCert);
+                  await uploadCertificates(tenantId, fd);
+                  toast.success('Certificates uploaded successfully', { id: toastId });
+                  loadAll();
+                } catch (err) {
+                  toast.error(getApiErrorMessage(err, 'Failed to upload certificates'), { id: toastId });
+                }
               }}>Upload</Button>
               {certs?.hasCertificates && (
                 <Button color="error" onClick={async () => {
-                  await deleteCertificates(tenantId);
-                  toast.success('Certificates removed');
-                  loadAll();
+                  const toastId = toast.loading('Removing certificates...');
+                  try {
+                    await deleteCertificates(tenantId);
+                    toast.success('Certificates removed successfully', { id: toastId });
+                    loadAll();
+                  } catch (err) {
+                    toast.error(getApiErrorMessage(err, 'Failed to remove certificates'), { id: toastId });
+                  }
                 }}>Delete certificates</Button>
               )}
             </Box>
