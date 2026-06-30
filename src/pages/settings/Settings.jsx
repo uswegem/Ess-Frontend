@@ -47,8 +47,17 @@ export default function Settings() {
   }, [isPlatformAdmin]);
 
   useEffect(() => {
-    if (activeTenantId && !selectedTenantId) setSelectedTenantId(activeTenantId);
-  }, [activeTenantId, selectedTenantId]);
+    const tenantFromUrl = searchParams.get('tenantId');
+    if (tenantFromUrl) {
+      setSelectedTenantId(tenantFromUrl);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!searchParams.get('tenantId') && activeTenantId && !selectedTenantId) {
+      setSelectedTenantId(activeTenantId);
+    }
+  }, [activeTenantId, selectedTenantId, searchParams]);
 
   const loadAll = async () => {
     if (!tenantId) return;

@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import { listTenants, patchTenantStatus } from '../../services/tenantService';
 import { reviewOnboarding } from '../../services/onboardingService';
 import { useNavigate } from 'react-router-dom';
+import TenantDetailDrawer, { shouldOpenOnboarding } from './TenantDetailDrawer';
 
 const STATUSES = ['draft', 'submitted', 'under_review', 'approved', 'active', 'rejected', 'suspended', 'disabled'];
 
@@ -19,6 +20,7 @@ export default function TenantsList() {
   const [reviewOpen, setReviewOpen] = useState(null);
   const [reviewDecision, setReviewDecision] = useState('approve');
   const [reviewReason, setReviewReason] = useState('');
+  const [detailTenantId, setDetailTenantId] = useState(null);
 
   const fetchTenants = async () => {
     try {
@@ -41,6 +43,14 @@ export default function TenantsList() {
   };
 
   useEffect(() => { fetchTenants(); }, [statusFilter]);
+
+  const handleOpen = (row) => {
+    if (shouldOpenOnboarding(row.status)) {
+      navigate(`/onboarding/${row.tenantId}`);
+    } else {
+      setDetailTenantId(row.tenantId);
+    }
+  };
 
   const handleReview = async () => {
     try {
@@ -82,7 +92,7 @@ export default function TenantsList() {
       width: 260,
       renderCell: (p) => (
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button size="small" onClick={() => navigate(`/onboarding/${p.row.tenantId}`)}>Open</Button>
+          <Button size="small" onClick={() => handleOpen(p.row)}>Open</Button>
           {['submitted', 'under_review'].includes(p.row.status) && (
             <Button size="small" variant="contained" onClick={() => setReviewOpen(p.row)}>Review</Button>
           )}
@@ -131,6 +141,11 @@ export default function TenantsList() {
           <Button variant="contained" onClick={handleReview}>Confirm</Button>
         </DialogActions>
       </Dialog>
+
+      <TenantDetailDrawer
+        tenantId={detailTenantId}
+        onClose={() => setDetailTenantId(null)}
+      />
     </div>
   );
 }

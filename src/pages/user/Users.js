@@ -64,9 +64,19 @@ export default function Users() {
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
+  const username = form.username.trim();
+  const canInvite = form.email.trim()
+    && form.fullName.trim()
+    && username.length >= 3
+    && username.length <= 50;
+
   const handleCreate = async () => {
+    if (!canInvite) {
+      toast.error('Email, full name, and username (3–50 characters) are required.');
+      return;
+    }
     try {
-      const result = await createTenantUser(tenantId, form);
+      const result = await createTenantUser(tenantId, { ...form, username });
       const issued = result.data?.credentials;
       setOpen(false);
       setForm({ email: '', fullName: '', role: 'support_staff', username: '', phone: '' });
@@ -152,16 +162,23 @@ export default function Users() {
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Invite Tenant User</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-          <TextField label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <TextField label="Full Name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
-          <TextField label="Username (optional)" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+          <TextField required label="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <TextField required label="Full Name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+          <TextField
+            required
+            label="Username"
+            value={form.username}
+            onChange={(e) => setForm({ ...form, username: e.target.value })}
+            helperText="3–50 characters"
+            inputProps={{ minLength: 3, maxLength: 50 }}
+          />
           <TextField select label="Role" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
             {TENANT_ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
           </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreate}>Invite</Button>
+          <Button variant="contained" onClick={handleCreate} disabled={!canInvite}>Invite</Button>
         </DialogActions>
       </Dialog>
 

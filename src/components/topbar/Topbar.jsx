@@ -1,53 +1,39 @@
 import React, { useEffect } from 'react';
 import './topbar.css';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { Button, Menu, MenuItem } from '@mui/material';
-import { Person, Key, Logout } from '@mui/icons-material';
-import { useDispatch, useSelector } from 'react-redux';
-import { setAuthSession, clearAuth } from '../../slice/authSlice';
+import { useDispatch } from 'react-redux';
+import { setAuthSession } from '../../slice/authSlice';
 import { setUser } from '../../slice/userInfo';
-import { logout } from '../../services/authService';
 import { getProfile } from '../../services/authService';
+import { usePermissions } from '../../hooks/usePermissions';
 import TenantSwitcher from './TenantSwitcher';
+import UserProfileMenu from './UserProfileMenu';
 
 export default function Topbar() {
-  const auth = useSelector((state) => state.auth);
-  const user = auth.user || {};
-  const navigate = useNavigate();
   const dispatch = useDispatch();
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const open = Boolean(anchorEl);
+  const { isPlatformAdmin } = usePermissions();
 
   useEffect(() => {
     const loadProfile = async () => {
       if (!localStorage.getItem('adminToken')) return;
       try {
         const profile = await getProfile();
-        dispatch(setAuthSession({
+        const sessionUpdate = {
           user: profile.user,
           activeTenant: profile.activeTenant,
-          memberships: profile.tenants || [],
           authContext: profile.authContext,
           permissions: profile.authContext?.permissions || [],
-        }));
+        };
+        if (!isPlatformAdmin) {
+          sessionUpdate.memberships = profile.tenants || [];
+        }
+        dispatch(setAuthSession(sessionUpdate));
         dispatch(setUser(profile.user));
       } catch {
         // ignore on boot
       }
     };
     loadProfile();
-  }, [dispatch]);
-
-  const logoutClick = async () => {
-    try {
-      await logout();
-      dispatch(clearAuth());
-      dispatch(setUser({}));
-      navigate('/');
-    } catch (err) {
-      console.error(err.message);
-    }
-  };
+  }, [dispatch, isPlatformAdmin]);
 
   return (
     <div className="topbarWrapper">
@@ -56,43 +42,7 @@ export default function Topbar() {
       </div>
       <div className="topRight" style={{ display: 'flex', alignItems: 'center' }}>
         <TenantSwitcher />
-        <Button
-          id="basic-button"
-          aria-controls={open ? 'basic-menu' : undefined}
-          aria-haspopup="true"
-          aria-expanded={open ? 'true' : undefined}
-          onClick={(e) => setAnchorEl(e.currentTarget)}
-          startIcon={<Person sx={{ color: '#2f323b' }} />}
-          sx={{
-            color: '#2f323b',
-            textTransform: 'none',
-            fontWeight: 600,
-            fontSize: '0.95rem',
-            '&:hover': { backgroundColor: 'rgba(47, 50, 59, 0.06)' },
-          }}
-        >
-          {user?.fullName || user?.username || 'Admin'}
-        </Button>
-        <Menu
-          id="basic-menu"
-          anchorEl={anchorEl}
-          open={open}
-          onClose={() => setAnchorEl(null)}
-        >
-          <NavLink to="/my-profile" className="link">
-            <MenuItem onClick={() => setAnchorEl(null)}>
-              <Person className="menuIcons" /> Profile
-            </MenuItem>
-          </NavLink>
-          <NavLink to="/change-password" className="link">
-            <MenuItem onClick={() => setAnchorEl(null)}>
-              <Key className="menuIcons" /> Change Password
-            </MenuItem>
-          </NavLink>
-          <MenuItem onClick={logoutClick}>
-            <Logout className="menuIcons" /> Logout
-          </MenuItem>
-        </Menu>
+        <UserProfileMenu />
       </div>
     </div>
   );

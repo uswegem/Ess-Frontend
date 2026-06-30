@@ -5,8 +5,12 @@ import { BrowserRouter as Router } from 'react-router-dom';
 import { Provider } from 'react-redux'
 import { store } from './store';
 import { setAuthSession } from './slice/authSlice';
-import { AUTH_STORAGE_KEYS, loadStoredAuth } from './ApiFunction';
+import { AUTH_STORAGE_KEYS, loadStoredAuth, setOnSessionRefreshed } from './ApiFunction';
 import AOS from 'aos';
+
+setOnSessionRefreshed((session) => {
+  store.dispatch(setAuthSession(session));
+});
 
 function hydrateAuthFromStorage() {
   loadStoredAuth();

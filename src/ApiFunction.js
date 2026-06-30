@@ -18,6 +18,11 @@ const instance = axios.create({
 
 let isRefreshing = false;
 let refreshQueue = [];
+let onSessionRefreshed = null;
+
+function setOnSessionRefreshed(handler) {
+  onSessionRefreshed = handler;
+}
 
 function getStoredToken() {
   return localStorage.getItem(AUTH_STORAGE_KEYS.token) || '';
@@ -68,6 +73,54 @@ function loadStoredAuth() {
 
 loadStoredAuth();
 
+instance.interceptors.request.use((config) => {
+  const token = getStoredToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+function applyRefreshedSession(data) {
+  const session = {
+    token: data.token,
+    refreshToken: data.refreshToken,
+    activeTenant: data.activeTenant,
+    permissions: data.permissions,
+  };
+
+  setToken(data.token);
+  if (data.refreshToken) {
+    localStorage.setItem(AUTH_STORAGE_KEYS.refreshToken, data.refreshToken);
+  }
+  if (data.activeTenant !== undefined) {
+    localStorage.setItem(AUTH_STORAGE_KEYS.activeTenant, JSON.stringify(data.activeTenant));
+  }
+  if (data.permissions) {
+    localStorage.setItem(AUTH_STORAGE_KEYS.permissions, JSON.stringify(data.permissions));
+    try {
+      const user = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEYS.user) || 'null');
+      if (user) {
+        localStorage.setItem(AUTH_STORAGE_KEYS.authContext, JSON.stringify({
+          role: user.role,
+          permissions: data.permissions,
+          isSuperAdmin: user.role === 'super_admin',
+        }));
+        session.authContext = {
+          role: user.role,
+          permissions: data.permissions,
+          isSuperAdmin: user.role === 'super_admin',
+        };
+      }
+    } catch {
+      // ignore corrupt storage
+    }
+  }
+
+  onSessionRefreshed?.(session);
+  return data.token;
+}
+
 async function refreshAccessToken() {
   const refreshToken = localStorage.getItem(AUTH_STORAGE_KEYS.refreshToken);
   if (!refreshToken) throw new Error('No refresh token');
@@ -75,14 +128,7 @@ async function refreshAccessToken() {
   const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
   if (!data?.success) throw new Error(data?.message || 'Refresh failed');
 
-  setToken(data.data.token);
-  if (data.data.refreshToken) {
-    localStorage.setItem(AUTH_STORAGE_KEYS.refreshToken, data.data.refreshToken);
-  }
-  if (data.data.activeTenant !== undefined) {
-    localStorage.setItem(AUTH_STORAGE_KEYS.activeTenant, JSON.stringify(data.data.activeTenant));
-  }
-  return data.data.token;
+  return applyRefreshedSession(data.data);
 }
 
 instance.interceptors.response.use(
@@ -152,6 +198,7 @@ export {
   clearAuthStorage,
   persistAuthSession,
   loadStoredAuth,
+  setOnSessionRefreshed,
   AUTH_STORAGE_KEYS,
   instance as apiClient,
 };

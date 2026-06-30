@@ -4,6 +4,7 @@ import {
   postRequest,
   persistAuthSession,
   clearAuthStorage,
+  AUTH_STORAGE_KEYS,
 } from '../ApiFunction';
 
 export async function login(credentials) {
@@ -31,6 +32,13 @@ export async function selectTenant(tenantId) {
   const { data } = await postRequest(API.SELECT_TENANT, { tenantId });
   if (!data.success) throw new Error(data.message || 'Tenant switch failed');
 
+  let storedUser = null;
+  try {
+    storedUser = JSON.parse(localStorage.getItem(AUTH_STORAGE_KEYS.user) || 'null');
+  } catch {
+    storedUser = null;
+  }
+
   const session = {
     token: data.data.token,
     refreshToken: data.data.refreshToken,
@@ -38,6 +46,8 @@ export async function selectTenant(tenantId) {
     permissions: data.data.permissions || [],
     authContext: {
       permissions: data.data.permissions || [],
+      isSuperAdmin: storedUser?.role === 'super_admin',
+      role: storedUser?.role,
     },
   };
   persistAuthSession(session);

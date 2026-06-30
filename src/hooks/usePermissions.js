@@ -7,7 +7,7 @@ export function usePermissions() {
   const isPlatformAdmin = isSuperAdmin || user?.role === 'admin';
 
   const can = (permission) => {
-    if (isSuperAdmin) return true;
+    if (isPlatformAdmin) return true;
     return (permissions || []).includes(permission);
   };
 

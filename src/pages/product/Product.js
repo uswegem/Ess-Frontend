@@ -22,13 +22,9 @@ import { getRequest, postRequest } from "../../ApiFunction";
 import API from "../../Api";
 import { toast } from "react-toastify";
 import { getESSErrorMessage, isESSSuccess } from "../../utils/essErrorHandler";
+import { useActiveTenant } from "../../hooks/useActiveTenant";
 
-const Product = () => {
-    const [open, setOpen] = React.useState(false);
-    const [scroll, setScroll] = React.useState('paper');
-    const [form, setForm] = useState({
-        fspCode: "",
-        fspName: "",
+const emptyProductFields = {
         productCode: "",
         productName: "",
         minTenure: "",
@@ -45,6 +41,21 @@ const Product = () => {
         forExecutive: false,
         shariaFacility: false,
         deductionCode: "",
+};
+
+const Product = () => {
+    const { activeTenant, tenantId } = useActiveTenant();
+    const [open, setOpen] = React.useState(false);
+    const [scroll, setScroll] = React.useState('paper');
+
+    const getTenantFspDefaults = useCallback(() => ({
+        fspCode: activeTenant?.fspCode || "",
+        fspName: activeTenant?.fspName || activeTenant?.tenantName || "",
+    }), [activeTenant]);
+
+    const [form, setForm] = useState({
+        ...getTenantFspDefaults(),
+        ...emptyProductFields,
     });
     const [loanProducts, setLoanProducts] = useState([])
     const [errors, setErrors] = useState({});
@@ -57,14 +68,6 @@ const Product = () => {
         // Inline validation
         let error = "";
         switch (field) {
-            case "fspCode":
-                if (!value) error = "FSP Code is required";
-                else if (value.length > 10) error = "Max 10 characters";
-                break;
-            case "fspName":
-                if (!value) error = "FSP Name is required";
-                else if (value.length > 100) error = "Max 100 characters";
-                break;
             case "productCode":
                 if (!value) error = "Product Code is required";
                 else if (value.length > 8) error = "Max 8 characters";
@@ -117,24 +120,8 @@ const Product = () => {
  
     const resetForm = () => {
         setForm({
-            fspCode: "",
-            fspName: "",
-            productCode: "",
-            productName: "",
-            minTenure: "",
-            maxTenure: "",
-            interestRate: "",
-            processingFee: "",
-            insurance: "",
-            minAmount: "",
-            maxAmount: "",
-            repaymentType: "",
-            insuranceType: "",
-            productDescription: "",
-            termsCondition: [],
-            forExecutive: false,
-            shariaFacility: false,
-            deductionCode: "",
+            ...getTenantFspDefaults(),
+            ...emptyProductFields,
         });
         setErrors({});
     };
@@ -167,7 +154,7 @@ const Product = () => {
         const payload = buildProductPayload(formData);
 
         try {
-            const result = await postRequest(API.CREATE_PRODUCT, payload);
+            const result = await postRequest(API.PRODUCTS, payload);
             console.log('Full API response:', result);
 
             // Handle ESS response format
@@ -260,10 +247,13 @@ const Product = () => {
 
 
    const handleSaveProduct = async () => {
+        if (!tenantId || !form.fspCode) {
+            toast.error("Select an active tenant before creating products.");
+            return;
+        }
+
         // Check all required fields
         const requiredFields = [
-            "fspCode",
-            "fspName",
             "productCode",
             "productName",
             "minTenure",
@@ -361,6 +351,14 @@ const Product = () => {
 
 
     const handleClickOpen = (scrollType) => () => {
+        if (!tenantId) {
+            toast.error("Select an active tenant before adding products.");
+            return;
+        }
+        setForm((prev) => ({
+            ...prev,
+            ...getTenantFspDefaults(),
+        }));
         setOpen(true);
         setScroll(scrollType);
     };
@@ -378,6 +376,15 @@ const Product = () => {
             }
         }
     }, [open]);
+
+    React.useEffect(() => {
+        if (open && activeTenant) {
+            setForm((prev) => ({
+                ...prev,
+                ...getTenantFspDefaults(),
+            }));
+        }
+    }, [open, activeTenant, getTenantFspDefaults]);
 
     const columns = [
         { field: "productCode", headerName: "Product Code", width: 120 },
@@ -473,26 +480,22 @@ const Product = () => {
                         tabIndex={-1}
                     >
                         <Stack spacing={2}>
-                            {/* FSP Code */}
                             <Stack direction="row" spacing={2}>
                                 <TextField
                                     label="FSP Code"
                                     fullWidth
                                     size="small"
                                     value={form.fspCode}
-                                    onChange={(e) => handleFormChange("fspCode", e.target.value)}
-                                    error={!!errors.fspCode}
-                                    helperText={errors.fspCode}
+                                    disabled
+                                    helperText="From active tenant"
                                 />
-                                {/* FSP Name */}
                                 <TextField
                                     label="FSP Name"
                                     fullWidth
                                     size="small"
                                     value={form.fspName}
-                                    onChange={(e) => handleFormChange("fspName", e.target.value)}
-                                    error={!!errors.fspName}
-                                    helperText={errors.fspName}
+                                    disabled
+                                    helperText="From active tenant"
                                 />
                             </Stack>
                             {/* Product Code */}
