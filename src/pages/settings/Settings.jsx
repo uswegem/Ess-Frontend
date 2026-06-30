@@ -41,6 +41,7 @@ export default function Settings() {
   const [keyModal, setKeyModal] = useState(null);
   const [newKeyName, setNewKeyName] = useState('Production');
   const [certFiles, setCertFiles] = useState({ publicCert: null, privateKey: null, caCert: null });
+  const [certUploading, setCertUploading] = useState(false);
   const [mifosSaving, setMifosSaving] = useState(false);
   const [mifosValidating, setMifosValidating] = useState(false);
   const [keyActionLoading, setKeyActionLoading] = useState(null);
@@ -423,23 +424,71 @@ export default function Settings() {
             )}
             <Typography variant="body2" sx={{ mb: 2 }}>Upload ESS signing certificates (PEM format)</Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Button variant="outlined" component="label">Public cert<input hidden type="file" onChange={(e) => setCertFiles({ ...certFiles, publicCert: e.target.files[0] })} /></Button>
-              <Button variant="outlined" component="label">Private key<input hidden type="file" onChange={(e) => setCertFiles({ ...certFiles, privateKey: e.target.files[0] })} /></Button>
-              <Button variant="outlined" component="label">CA cert (optional)<input hidden type="file" onChange={(e) => setCertFiles({ ...certFiles, caCert: e.target.files[0] })} /></Button>
-              <Button variant="contained" onClick={async () => {
-                const toastId = toast.loading('Uploading certificates...');
-                try {
-                  const fd = new FormData();
-                  if (certFiles.publicCert) fd.append('publicCert', certFiles.publicCert);
-                  if (certFiles.privateKey) fd.append('privateKey', certFiles.privateKey);
-                  if (certFiles.caCert) fd.append('caCert', certFiles.caCert);
-                  await uploadCertificates(tenantId, fd);
-                  toast.success('Certificates uploaded successfully', { id: toastId });
-                  loadAll();
-                } catch (err) {
-                  toast.error(getApiErrorMessage(err, 'Failed to upload certificates'), { id: toastId });
-                }
-              }}>Upload</Button>
+              <Button variant="outlined" component="label">
+                Public cert
+                <input
+                  hidden
+                  type="file"
+                  accept=".pem,.crt"
+                  onChange={(e) => setCertFiles({ ...certFiles, publicCert: e.target.files?.[0] || null })}
+                />
+              </Button>
+              {certFiles.publicCert && (
+                <Typography variant="caption" color="text.secondary">Selected: {certFiles.publicCert.name}</Typography>
+              )}
+              <Button variant="outlined" component="label">
+                Private key
+                <input
+                  hidden
+                  type="file"
+                  accept=".pem,.key"
+                  onChange={(e) => setCertFiles({ ...certFiles, privateKey: e.target.files?.[0] || null })}
+                />
+              </Button>
+              {certFiles.privateKey && (
+                <Typography variant="caption" color="text.secondary">Selected: {certFiles.privateKey.name}</Typography>
+              )}
+              <Button variant="outlined" component="label">
+                CA cert (optional)
+                <input
+                  hidden
+                  type="file"
+                  accept=".pem,.crt"
+                  onChange={(e) => setCertFiles({ ...certFiles, caCert: e.target.files?.[0] || null })}
+                />
+              </Button>
+              {certFiles.caCert && (
+                <Typography variant="caption" color="text.secondary">Selected: {certFiles.caCert.name}</Typography>
+              )}
+              <Button
+                variant="contained"
+                disabled={certUploading || !certFiles.publicCert || !certFiles.privateKey}
+                startIcon={certUploading ? <CircularProgress size={16} color="inherit" /> : null}
+                onClick={async () => {
+                  if (!certFiles.publicCert || !certFiles.privateKey) {
+                    toast.error('Select both public certificate and private key before uploading.');
+                    return;
+                  }
+                  setCertUploading(true);
+                  const toastId = toast.loading('Uploading certificates...');
+                  try {
+                    const fd = new FormData();
+                    fd.append('publicCert', certFiles.publicCert);
+                    fd.append('privateKey', certFiles.privateKey);
+                    if (certFiles.caCert) fd.append('caCert', certFiles.caCert);
+                    await uploadCertificates(tenantId, fd);
+                    toast.success('Certificates uploaded successfully', { id: toastId });
+                    setCertFiles({ publicCert: null, privateKey: null, caCert: null });
+                    loadAll();
+                  } catch (err) {
+                    toast.error(getApiErrorMessage(err, 'Failed to upload certificates'), { id: toastId });
+                  } finally {
+                    setCertUploading(false);
+                  }
+                }}
+              >
+                {certUploading ? 'Uploading...' : 'Upload'}
+              </Button>
               {certs?.hasCertificates && (
                 <Button color="error" onClick={async () => {
                   const toastId = toast.loading('Removing certificates...');
