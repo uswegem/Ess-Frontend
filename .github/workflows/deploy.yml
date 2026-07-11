@@ -48,8 +48,7 @@ jobs:
           host: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_HOST_PROD || secrets.ESS_HOST_UAT }}
           username: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_USER_PROD || secrets.ESS_USER_UAT }}
           key: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_SSH_KEY_PROD || secrets.ESS_SSH_KEY_UAT }}
-          # If you don't use a next.config.js (or use .mjs/.ts instead), adjust this list
-          source: ".next/,public/,package.json,package-lock.json,next.config.js"
+          source: "build/"
           target: ${{ steps.vars.outputs.deploy_path }}
 
       - name: Install & restart on Hetzner
@@ -60,12 +59,11 @@ jobs:
           key: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_SSH_KEY_PROD || secrets.ESS_SSH_KEY_UAT }}
           script: |
             cd ${{ steps.vars.outputs.deploy_path }}
-            npm install
-            npm prune --omit=dev
+            npm install serve@14 --no-save --no-audit --no-fund
             pm2 restart ${{ steps.vars.outputs.pm2_app }} --update-env \
-              || pm2 start ./node_modules/.bin/next \
+              || pm2 start ./node_modules/.bin/serve \
                   --name ${{ steps.vars.outputs.pm2_app }} \
-                  -- start -p ${{ steps.vars.outputs.port }}
+                  -- -s build -l ${{ steps.vars.outputs.port }}
             pm2 save
 
       - name: Confirm deployment
