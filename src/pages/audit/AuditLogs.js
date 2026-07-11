@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Paper, Typography, TextField, MenuItem } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { getAuditLogs } from '../../services/auditLogService';
@@ -13,7 +13,7 @@ export default function AuditLogs() {
   const [actionFilter, setActionFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
-  const loadLogs = async (filters = {}) => {
+  const loadLogs = useCallback(async (filters = {}) => {
     try {
       setLoading(true);
       const params = { limit: 50, ...filters };
@@ -34,9 +34,9 @@ export default function AuditLogs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tenantId, actionFilter, statusFilter]);
 
-  const debouncedLoad = useMemo(() => debounce((filters) => loadLogs(filters), 400), [tenantId, actionFilter, statusFilter]);
+  const debouncedLoad = useMemo(() => debounce((filters) => loadLogs(filters), 400), [loadLogs]);
 
   useEffect(() => {
     debouncedLoad();

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Paper, Button, Box, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, MenuItem, Typography,
@@ -22,7 +22,7 @@ export default function TenantsList() {
   const [reviewReason, setReviewReason] = useState('');
   const [detailTenantId, setDetailTenantId] = useState(null);
 
-  const fetchTenants = async () => {
+  const fetchTenants = useCallback(async () => {
     try {
       setLoading(true);
       const result = await listTenants({ status: statusFilter, limit: 50 });
@@ -40,9 +40,9 @@ export default function TenantsList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
-  useEffect(() => { fetchTenants(); }, [statusFilter]);
+  useEffect(() => { fetchTenants(); }, [fetchTenants]);
 
   const handleOpen = (row) => {
     if (shouldOpenOnboarding(row.status)) {

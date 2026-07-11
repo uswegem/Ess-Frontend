@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Box, Tabs, Tab, TextField, Button, Paper, Typography, MenuItem,
@@ -69,7 +69,7 @@ export default function Settings() {
     }
   }, [activeTenantId, selectedTenantId, searchParams]);
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     if (!tenantId) return;
     try {
       const t = await getTenant(tenantId);
@@ -87,9 +87,9 @@ export default function Settings() {
     } catch (err) {
       toast.error(getApiErrorMessage(err));
     }
-  };
+  }, [tenantId, can]);
 
-  useEffect(() => { loadAll(); }, [tenantId]);
+  useEffect(() => { loadAll(); }, [loadAll]);
 
   const saveProfile = async () => {
     const toastId = toast.loading('Saving profile...');
