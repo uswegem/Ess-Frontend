@@ -43,7 +43,7 @@ jobs:
           if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
             echo "deploy_path=/opt/ess2/frontend" >> $GITHUB_OUTPUT
             echo "pm2_app=ess2-frontend-prod" >> $GITHUB_OUTPUT
-            echo "port=3002" >> $GITHUB_OUTPUT
+            echo "port=3004" >> $GITHUB_OUTPUT
           else
             echo "deploy_path=/home/uswege/ess2/frontend" >> $GITHUB_OUTPUT
             echo "pm2_app=ess2-frontend-uat" >> $GITHUB_OUTPUT
