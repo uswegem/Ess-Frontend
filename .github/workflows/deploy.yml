@@ -14,29 +14,6 @@ jobs:
     name: Deploy to ${{ github.event.inputs.environment }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Set frontend API base URL
-        run: |
-          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
-            echo "REACT_APP_API_V1_BASE_URL=/api/v1" >> $GITHUB_ENV
-          else
-            echo "REACT_APP_API_V1_BASE_URL=http://135.181.33.13:4002/api/v1" >> $GITHUB_ENV
-          fi
-
-      - name: Build
-        run: npm run build
-
       - name: Set deploy variables
         id: vars
         run: |
@@ -44,29 +21,43 @@ jobs:
             echo "deploy_path=/opt/ess2/frontend" >> $GITHUB_OUTPUT
             echo "pm2_app=ess2-frontend-prod" >> $GITHUB_OUTPUT
             echo "port=3004" >> $GITHUB_OUTPUT
+            echo "api_base_url=/api/v1" >> $GITHUB_OUTPUT
           else
             echo "deploy_path=/home/uswege/ess2/frontend" >> $GITHUB_OUTPUT
             echo "pm2_app=ess2-frontend-uat" >> $GITHUB_OUTPUT
             echo "port=3003" >> $GITHUB_OUTPUT
+            echo "api_base_url=http://135.181.33.13:4002/api/v1" >> $GITHUB_OUTPUT
           fi
 
-      - name: Copy build to Hetzner
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_HOST_PROD || secrets.ESS_HOST_UAT }}
-          username: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_USER_PROD || secrets.ESS_USER_UAT }}
-          key: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_SSH_KEY_PROD || secrets.ESS_SSH_KEY_UAT }}
-          source: "build/"
-          target: ${{ steps.vars.outputs.deploy_path }}
-
-      - name: Install & restart on Hetzner
+      - name: Deploy source, build, and restart on Hetzner
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_HOST_PROD || secrets.ESS_HOST_UAT }}
           username: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_USER_PROD || secrets.ESS_USER_UAT }}
           key: ${{ github.event.inputs.environment == 'prod' && secrets.ESS_SSH_KEY_PROD || secrets.ESS_SSH_KEY_UAT }}
           script: |
-            cd ${{ steps.vars.outputs.deploy_path }}
+            set -e
+            DEPLOY_PATH="${{ steps.vars.outputs.deploy_path }}"
+            REPO_URL="https://github.com/uswegem/Ess-Frontend.git"
+
+            if [ -d "$DEPLOY_PATH/.git" ]; then
+              echo "Existing checkout found — pulling latest"
+              cd "$DEPLOY_PATH"
+              git fetch origin
+              git reset --hard origin/main
+            else
+              echo "No checkout found — cloning fresh"
+              mkdir -p "$(dirname "$DEPLOY_PATH")"
+              rm -rf "$DEPLOY_PATH"
+              git clone -b main "$REPO_URL" "$DEPLOY_PATH"
+              cd "$DEPLOY_PATH"
+            fi
+
+            echo "REACT_APP_API_V1_BASE_URL=${{ steps.vars.outputs.api_base_url }}" > .env.production.local
+
+            npm ci
+            npm run build
+
             npm install serve@14 --no-save --no-audit --no-fund
             pm2 restart ${{ steps.vars.outputs.pm2_app }} --update-env \
               || pm2 start ./node_modules/.bin/serve \
