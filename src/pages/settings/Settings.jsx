@@ -231,17 +231,18 @@ export default function Settings() {
       </Tabs>
 
       <TabPanel value={tab} index={0}>
-        <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 480 }}>
-          <TextField label="Tenant Name" value={profile.tenantName || ''} onChange={(e) => setProfile({ ...profile, tenantName: e.target.value })} />
-          <TextField label="FSP Code" value={profile.fspCode || ''} disabled />
-          <TextField label="Contact Email" value={profile.contactEmail || ''} onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })} />
-          <TextField label="Contact Person" value={profile.contactPerson || ''} onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })} />
-          <TextField label="Phone" value={profile.contactPhone || ''} onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })} />
+        <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640 }}>
+          <TextField fullWidth label="Tenant Name" value={profile.tenantName || ''} onChange={(e) => setProfile({ ...profile, tenantName: e.target.value })} />
+          <TextField fullWidth label="FSP Code" value={profile.fspCode || ''} disabled />
+          <TextField fullWidth label="Contact Email" value={profile.contactEmail || ''} onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })} />
+          <TextField fullWidth label="Contact Person" value={profile.contactPerson || ''} onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })} />
+          <TextField fullWidth label="Phone" value={profile.contactPhone || ''} onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })} />
           {can('tenant:update') && (
             <>
               <Typography variant="subtitle2" sx={{ mt: 1 }}>Subscription</Typography>
               <TextField
                 select
+                fullWidth
                 label="Plan"
                 value={profile.subscription?.plan || 'standard'}
                 onChange={(e) => setProfile({
@@ -254,6 +255,7 @@ export default function Settings() {
                 <MenuItem value="enterprise">Enterprise</MenuItem>
               </TextField>
               <TextField
+                fullWidth
                 type="number"
                 label="Monthly transaction limit"
                 value={profile.subscription?.monthlyLimit ?? ''}
@@ -274,8 +276,8 @@ export default function Settings() {
 
       {can('tenant:update') && (
         <TabPanel value={tab} index={1}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 480 }}>
-            <TextField select label="Mode" value={mifos.mode || 'inherit_default'} onChange={(e) => setMifos({ ...mifos, mode: e.target.value })}>
+          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640 }}>
+            <TextField select fullWidth label="Mode" value={mifos.mode || 'inherit_default'} onChange={(e) => setMifos({ ...mifos, mode: e.target.value })}>
               <MenuItem value="inherit_default">Inherit default</MenuItem>
               <MenuItem value="override">Override</MenuItem>
             </TextField>
@@ -339,6 +341,7 @@ export default function Settings() {
                 {mifosSaving ? 'Saving...' : 'Save'}
               </Button>
               <Button
+                variant="outlined"
                 onClick={validateMifos}
                 disabled={mifosSaving || mifosValidating}
                 startIcon={mifosValidating ? <CircularProgress size={18} /> : null}
@@ -416,7 +419,7 @@ export default function Settings() {
 
       {can('tenant:update') && (
         <TabPanel value={tab} index={can('api_keys:manage') ? 3 : 2}>
-          <Paper sx={{ p: 2, maxWidth: 520 }}>
+          <Paper sx={{ p: 2, maxWidth: 640 }}>
             {certs?.hasCertificates && (
               <Alert severity="success" sx={{ mb: 2 }}>
                 Certificates uploaded. Fingerprint: {certs.certificateFingerprint}
@@ -490,7 +493,7 @@ export default function Settings() {
                 {certUploading ? 'Uploading...' : 'Upload'}
               </Button>
               {certs?.hasCertificates && (
-                <Button color="error" onClick={async () => {
+                <Button variant="outlined" color="error" onClick={async () => {
                   const toastId = toast.loading('Removing certificates...');
                   try {
                     await deleteCertificates(tenantId);
@@ -512,7 +515,7 @@ export default function Settings() {
           <Typography variant="body2">Key: {keyModal?.rawKey}</Typography>
           <Typography variant="body2">Secret: {keyModal?.rawSecret}</Typography>
         </DialogContent>
-        <DialogActions><Button onClick={() => setKeyModal(null)}>Done</Button></DialogActions>
+        <DialogActions><Button variant="contained" onClick={() => setKeyModal(null)}>Done</Button></DialogActions>
       </Dialog>
     </Box>
   );

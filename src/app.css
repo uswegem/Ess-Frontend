@@ -80,7 +80,7 @@ h2 {
 
 .custom-button {
   appearance: none;
-  background-color: #4361ee;
+  background-color: #1E3A8A;
   border: 1px solid rgba(27, 31, 35, 0.15);
   border-radius: 6px;
   box-shadow:
@@ -106,20 +106,20 @@ h2 {
 }
 
 .custom-button:hover {
-  background-color: #4361ee;
+  background-color: #152B66;
   text-decoration: none;
   transition-duration: 0.1s;
 }
 
 .custom-button:disabled {
-  background-color: #4361ee;
+  background-color: #1E3A8A;
   border-color: rgba(27, 31, 35, 0.15);
   color: #959da5;
   cursor: default;
 }
 
 .custom-button:active {
-  background-color: #4361ee;
+  background-color: #152B66;
   box-shadow: rgba(225, 228, 232, 0.2) 0 1px 0 inset;
   transition: none 0s;
 }
@@ -166,8 +166,8 @@ h2 {
 /* Focus effect */
 .detailBarInput:focus {
   background-color: #fff;
-  border-color: #1976d2;   /* Professional blue */
-  box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+  border-color: #1E3A8A;   /* Primary brand blue */
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.2);
 }
 
 /* Disabled style */

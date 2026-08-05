@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, TextField, Typography, Button, Alert } from '@mui/material';
+import SectionHeading from './SectionHeading';
 
 export default function ApiKeySetup({
   form,
@@ -11,9 +12,14 @@ export default function ApiKeySetup({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <Typography variant="body2">Create first API key (optional — leave name empty to skip)</Typography>
-      <TextField label="Key name" value={form.apiKeyName} onChange={(e) => setForm({ ...form, apiKeyName: e.target.value })} />
+      <TextField
+        label="Key name"
+        value={form.apiKeyName}
+        onChange={(e) => setForm({ ...form, apiKeyName: e.target.value })}
+        fullWidth
+      />
 
-      <Typography variant="subtitle2" sx={{ mt: 2 }}>ESS signing certificates (optional)</Typography>
+      <SectionHeading sx={{ mt: 2 }}>ESS signing certificates (optional)</SectionHeading>
       <Typography variant="caption" color="text.secondary">
         Upload PEM files now or later from FSP Settings.
       </Typography>

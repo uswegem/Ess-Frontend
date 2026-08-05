@@ -102,7 +102,7 @@ export default function TenantSwitcher() {
     if (!activeTenant) return null;
     return (
       <Box sx={{ mr: 2 }}>
-        <Typography variant="body2" sx={{ color: '#555', fontWeight: 500 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
           {activeTenant.fspName || activeTenant.tenantName || activeTenant.tenantId}
         </Typography>
       </Box>
@@ -121,8 +121,8 @@ export default function TenantSwitcher() {
         endIcon={<KeyboardArrowDownIcon />}
         sx={{
           textTransform: 'none',
-          color: '#2f323b',
-          borderColor: 'rgba(47, 50, 59, 0.25)',
+          color: 'text.primary',
+          borderColor: 'divider',
           maxWidth: 220,
           '& .MuiButton-endIcon': { ml: 0.5 },
         }}

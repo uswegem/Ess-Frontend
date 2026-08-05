@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Clock, XCircle, Ban, FileText } from 'lucide-react';
+import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
+import AccessTimeOutlined from '@mui/icons-material/AccessTimeOutlined';
+import HighlightOffOutlined from '@mui/icons-material/HighlightOffOutlined';
+import BlockOutlined from '@mui/icons-material/BlockOutlined';
+import DescriptionOutlined from '@mui/icons-material/DescriptionOutlined';
 import {
   Card, CardContent, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper, Chip, Box,
 } from '@mui/material';
@@ -11,16 +15,17 @@ import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { usePermissions } from '../../hooks/usePermissions';
 import { getCached, setCached, DASHBOARD_CACHE_TTL_MS } from '../../utils/performance';
 import { toast } from 'react-toastify';
+import theme from '../../theme/theme';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 
 const ESS_SUMMARY_ICONS = {
-  pendingEmployerApproval: <Clock className="text-warning" size={28} />,
-  pendingFspApproval: <Clock style={{ color: '#ed6c02' }} size={28} />,
-  activeLoans: <CheckCircle style={{ color: '#2e7d32' }} size={28} />,
-  cancelled: <Ban style={{ color: '#757575' }} size={28} />,
-  rejected: <XCircle style={{ color: '#d32f2f' }} size={28} />,
-  closedFullyRepaid: <FileText style={{ color: '#1976d2' }} size={28} />,
+  pendingEmployerApproval: <AccessTimeOutlined className="text-warning" sx={{ fontSize: 28 }} />,
+  pendingFspApproval: <AccessTimeOutlined sx={{ fontSize: 28, color: 'warning.main' }} />,
+  activeLoans: <CheckCircleOutline sx={{ fontSize: 28, color: 'success.main' }} />,
+  cancelled: <BlockOutlined sx={{ fontSize: 28, color: 'text.secondary' }} />,
+  rejected: <HighlightOffOutlined sx={{ fontSize: 28, color: 'error.main' }} />,
+  closedFullyRepaid: <DescriptionOutlined sx={{ fontSize: 28, color: 'primary.main' }} />,
 };
 
 export default function Dashboard() {
@@ -188,7 +193,7 @@ export default function Dashboard() {
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="applications" fill="#1976d2" />
+                <Bar dataKey="applications" fill={theme.palette.primary.main} />
               </BarChart>
             </ResponsiveContainer>
           </Paper>

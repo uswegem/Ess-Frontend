@@ -16,6 +16,14 @@ import Login from './pages/login/Login.jsx';
 import { Navigate, useLocation } from 'react-router-dom';
 import { MenuOpen } from '@mui/icons-material';
 import { Toaster } from 'react-hot-toast';
+import { useIdleLogout } from './hooks/useIdleLogout';
+import IdleLogoutWarning from './components/security/IdleLogoutWarning';
+import { logout } from './services/authService';
+
+// 15 min idle timeout, 1 min warning countdown before forced logout - app-wide, not
+// specific to one feature (this app can trigger irreversible actions like loan liquidation).
+const IDLE_LOGOUT_TIMEOUT_MS = 15 * 60 * 1000;
+const IDLE_LOGOUT_WARNING_MS = 60 * 1000;
 
 const drawerWidth = 240;
 
@@ -46,7 +54,7 @@ const AppBar = styled(MuiAppBar, {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  background: "#2f323b",
+  background: theme.palette.primary.dark,
   ...(open && {
     width: `calc(100% - ${drawerWidth}px)`,
     marginLeft: `${drawerWidth}px`,
@@ -81,8 +89,27 @@ export default function App() {
   React.useEffect(() => {
     window.addEventListener("resize", handleResize)
   })
+
+  const idleLogoutEnabled = Boolean(auth) && router.pathname !== "/";
+  const { showWarning, countdown, stayLoggedIn, logoutNow } = useIdleLogout({
+    enabled: idleLogoutEnabled,
+    timeout: IDLE_LOGOUT_TIMEOUT_MS,
+    warningTime: IDLE_LOGOUT_WARNING_MS,
+    onLogout: () => {
+      logout().finally(() => {
+        window.location.replace('/');
+      });
+    },
+  });
+
   return (
     <>
+      <IdleLogoutWarning
+        open={idleLogoutEnabled && showWarning}
+        countdown={countdown}
+        onStayLoggedIn={stayLoggedIn}
+        onLogoutNow={logoutNow}
+      />
       <Toaster
         toastOptions={{
           className: '',
@@ -111,7 +138,7 @@ export default function App() {
                   aria-label="open drawer"
                   onClick={handleDrawerOpen}
                   edge="start"
-                  sx={{ mr: 2, color: "#000000", ...(open && { display: 'none' }) }}
+                  sx={{ mr: 2, color: "primary.contrastText", ...(open && { display: 'none' }) }}
                 >
                   <MenuIcon className='topBarIcon' />
                 </IconButton>
@@ -119,7 +146,7 @@ export default function App() {
                 <IconButton
                   onClick={handleDrawerClose}
                   edge="start"
-                  sx={{ mr: 2, color: "#000000" }}
+                  sx={{ mr: 2, color: "primary.contrastText" }}
                 >
                   <MenuOpen className='topBarIcon' />
                 </IconButton>

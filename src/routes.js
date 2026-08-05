@@ -11,8 +11,10 @@ const Profile = lazy(() => import('./pages/admin/Profile'));
 const ChangePassword = lazy(() => import('./pages/admin/ChangePassword'));
 const Product = lazy(() => import('./pages/product/Product'));
 const Loan = lazy(() => import('./pages/loan/Loan'));
+const LoanDetail = lazy(() => import('./pages/loan/LoanDetail'));
 const NotificationManagement = lazy(() => import('./pages/notification/NotificationManagement'));
 const PendingResponsesManager = lazy(() => import('./pages/messages/PendingResponsesManager'));
+const ManualMessageTrigger = lazy(() => import('./pages/messages/ManualMessageTrigger'));
 
 const routes = [
   { path: '/dashboard', Component: Dashboard },
@@ -28,7 +30,9 @@ const routes = [
   { path: '/notifications', Component: NotificationManagement },
   { path: '/products', Component: Product },
   { path: '/loan', Component: Loan },
+  { path: '/loan/:id', Component: LoanDetail },
   { path: '/messages/pending', Component: PendingResponsesManager },
+  { path: '/messages/trigger', Component: ManualMessageTrigger },
 ];
 
 export default routes;

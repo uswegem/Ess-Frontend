@@ -5,6 +5,7 @@
   "dependencies": {
     "@emotion/react": "^11.10.5",
     "@emotion/styled": "^11.10.5",
+    "@fontsource/poppins": "^5.3.0",
     "@mui/icons-material": "^5.10.9",
     "@mui/lab": "^5.0.0-alpha.156",
     "@mui/material": "^5.10.13",
@@ -23,9 +24,9 @@
     "country-code-lookup": "^0.0.22",
     "country-codes-list": "^1.6.10",
     "country-list": "^2.3.0",
-    "lucide-react": "^0.543.0",
     "moment": "^2.29.4",
     "moment-timezone": "^0.5.45",
+    "papaparse": "^5.5.4",
     "react": "^18.2.0",
     "react-chartjs-2": "^5.2.0",
     "react-country-region-selector": "^3.6.1",
@@ -40,8 +41,10 @@
     "react-select": "^5.7.0",
     "react-toastify": "^9.1.1",
     "recharts": "^2.12.7",
+    "serve": "^14.2.6",
     "socket.io-client": "^4.7.5",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",

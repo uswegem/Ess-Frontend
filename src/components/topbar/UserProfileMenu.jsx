@@ -95,7 +95,7 @@ export default function UserProfileMenu() {
           sx={{
             width: 38,
             height: 38,
-            bgcolor: '#1976d2',
+            bgcolor: 'primary.main',
             fontSize: '0.9rem',
             fontWeight: 700,
           }}
@@ -125,8 +125,8 @@ export default function UserProfileMenu() {
             sx={{
               width: 52,
               height: 52,
-              bgcolor: '#e0e0e0',
-              color: '#616161',
+              bgcolor: 'divider',
+              color: 'text.secondary',
               fontSize: '1.1rem',
               fontWeight: 700,
             }}

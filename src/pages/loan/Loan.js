@@ -1,11 +1,20 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DataGrid } from '@mui/x-data-grid';
 import Paper from '@mui/material/Paper';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
 import { IconButton, Tooltip } from '@mui/material';
-import { RefreshCw } from 'lucide-react';
-import { getRequest } from '../../ApiFunction';
+import RefreshOutlined from '@mui/icons-material/RefreshOutlined';
+import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
+import SendOutlined from '@mui/icons-material/SendOutlined';
+import { getRequest, postRequest } from '../../ApiFunction';
 import API from '../../Api';
 import { toast } from 'react-toastify';
+import { usePermissions } from '../../hooks/usePermissions';
+import { MESSAGE_TYPES, buildMessageDetails } from '../../services/messages/messageTypes';
+
+const NOTIFIABLE_STATUSES = ['LOAN_CREATED', 'DISBURSED', 'FAILED'];
 
 const STATUS_COLORS = {
   DISBURSED: 'green',
@@ -22,6 +31,49 @@ function clientDisplayName(loan) {
 }
 
 const LoanListing = () => {
+  const navigate = useNavigate();
+  const { can } = usePermissions();
+  const canTrigger = can('messages:trigger');
+  const canTriggerSensitive = can('messages:trigger_sensitive');
+
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [menuLoan, setMenuLoan] = useState(null);
+  const [sendingType, setSendingType] = useState(null);
+
+  const openNotifyMenu = (event, loan) => {
+    setMenuAnchor(event.currentTarget);
+    setMenuLoan(loan);
+  };
+
+  const closeNotifyMenu = () => {
+    setMenuAnchor(null);
+    setMenuLoan(null);
+  };
+
+  const sendNotification = async (messageType) => {
+    if (!menuLoan) return;
+    closeNotifyMenu();
+    setSendingType(messageType);
+    try {
+      const template = MESSAGE_TYPES[messageType];
+      const messageDetails = buildMessageDetails(template.messageDetails, menuLoan);
+      const response = await postRequest(API.MANUAL_OUTGOING_MESSAGE, {
+        MessageType: messageType,
+        MessageDetails: messageDetails,
+      });
+      const { success, error } = response.data;
+      if (!success) {
+        toast.error(error || 'Failed to send notification');
+        return;
+      }
+      toast.success('Notification sent');
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.response?.data?.message || err.message);
+    } finally {
+      setSendingType(null);
+    }
+  };
+
   const columns = [
     { field: 'essApplicationNumber', headerName: 'Application #', width: 160 },
     { field: 'mifosLoanAccountNumber', headerName: 'MIFOS Account', width: 140 },
@@ -64,6 +116,30 @@ const LoanListing = () => {
       headerName: 'MIFOS Loan ID',
       width: 120,
     },
+    {
+      field: 'action',
+      headerName: 'Action',
+      width: 110,
+      sortable: false,
+      renderCell: (params) => (
+        <div className="d-flex align-items-center gap-2">
+          <Tooltip title="View">
+            <VisibilityOutlined
+              sx={{ fontSize: 20, cursor: 'pointer' }}
+              onClick={() => navigate(`/loan/${params.row.id}`)}
+            />
+          </Tooltip>
+          {canTrigger && NOTIFIABLE_STATUSES.includes(params.row.status) && (
+            <Tooltip title="Send Notification">
+              <SendOutlined
+                sx={{ fontSize: 20, cursor: 'pointer' }}
+                onClick={(e) => openNotifyMenu(e, params.row)}
+              />
+            </Tooltip>
+          )}
+        </div>
+      ),
+    },
   ];
 
   const [rows, setRows] = useState([]);
@@ -72,7 +148,10 @@ const LoanListing = () => {
   const fetchLoans = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getRequest(API.ALL_EMPLOYEES_LOAN);
+      // CHARGES_CALCULATED loans have no LOAN_OFFER_REQUEST yet - not a real application,
+      // so excluded from this listing too (same excludeStatuses param used by the
+      // message-trigger loan lookup).
+      const result = await getRequest(API.ALL_EMPLOYEES_LOAN, { params: { excludeStatuses: 'CHARGES_CALCULATED' } });
       const { success, data, message } = result.data;
 
       if (!success) {
@@ -116,7 +195,7 @@ const LoanListing = () => {
         </div>
         <Tooltip title="Refresh">
           <IconButton onClick={fetchLoans} aria-label="Refresh loans">
-            <RefreshCw size={20} />
+            <RefreshOutlined sx={{ fontSize: 20 }} />
           </IconButton>
         </Tooltip>
       </div>
@@ -131,6 +210,21 @@ const LoanListing = () => {
           sx={{ border: 0 }}
         />
       </Paper>
+
+      <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={closeNotifyMenu}>
+        <MenuItem
+          disabled={!canTriggerSensitive || sendingType === 'LOAN_DISBURSEMENT_NOTIFICATION'}
+          onClick={() => sendNotification('LOAN_DISBURSEMENT_NOTIFICATION')}
+        >
+          Send Disbursement Notification
+        </MenuItem>
+        <MenuItem
+          disabled={!canTriggerSensitive || sendingType === 'LOAN_DISBURSEMENT_FAILURE_NOTIFICATION'}
+          onClick={() => sendNotification('LOAN_DISBURSEMENT_FAILURE_NOTIFICATION')}
+        >
+          Send Disbursement Failure Notification
+        </MenuItem>
+      </Menu>
     </div>
   );
 };

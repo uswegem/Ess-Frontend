@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  Box, Stepper, Step, StepLabel, Button, Typography, Paper,
+  Box, Stepper, Step, StepLabel, StepConnector, stepConnectorClasses, Button, Typography, Paper,
   Dialog, DialogTitle, DialogContent, DialogActions, Alert,
 } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { toast } from 'react-toastify';
 import {
   validateFspCode, createDraft, getDraft, updateDraft, submitOnboarding,
@@ -16,6 +17,39 @@ import MifosConfig from '../../components/OnboardingWizard/MifosConfig';
 import ApiKeySetup from '../../components/OnboardingWizard/ApiKeySetup';
 import ReviewStep from '../../components/OnboardingWizard/ReviewStep';
 import SuccessScreen from '../../components/OnboardingWizard/SuccessScreen';
+
+const OnboardingStepConnector = styled(StepConnector)(({ theme }) => ({
+  [`&.${stepConnectorClasses.active}, &.${stepConnectorClasses.completed}`]: {
+    [`& .${stepConnectorClasses.line}`]: {
+      borderColor: theme.palette.primary.main,
+    },
+  },
+  [`& .${stepConnectorClasses.line}`]: {
+    borderColor: theme.palette.divider,
+    borderTopWidth: 2,
+  },
+}));
+
+function OnboardingStepIcon({ active, completed, icon }) {
+  return (
+    <Box
+      sx={{
+        width: 28,
+        height: 28,
+        borderRadius: '50%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        bgcolor: active || completed ? 'primary.main' : 'action.disabledBackground',
+        color: active || completed ? 'primary.contrastText' : 'text.secondary',
+      }}
+    >
+      {icon}
+    </Box>
+  );
+}
 
 const STEPS = ['Organization', 'MIFOS Config', 'API Keys & Certificates', 'Review', 'Submit'];
 
@@ -216,7 +250,7 @@ export default function OnboardingWizard() {
 
   if (submitted) {
     return (
-      <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
+      <Box sx={{ p: 3 }}>
         <SuccessScreen tenantId={tenantId} onContinue={() => navigate('/tenants')} />
       </Box>
     );
@@ -259,10 +293,14 @@ export default function OnboardingWizard() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 800, mx: 'auto' }}>
+    <Box sx={{ p: 3 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>FSP Onboarding</Typography>
-      <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-        {STEPS.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+      <Stepper activeStep={activeStep} connector={<OnboardingStepConnector />} sx={{ mb: 3 }}>
+        {STEPS.map((label) => (
+          <Step key={label}>
+            <StepLabel StepIconComponent={OnboardingStepIcon}>{label}</StepLabel>
+          </Step>
+        ))}
       </Stepper>
       <Paper sx={{ p: 3, mb: 2 }}>{renderStep()}</Paper>
       <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -278,7 +316,7 @@ export default function OnboardingWizard() {
           <Typography variant="body2">Key: {keyModal?.rawKey}</Typography>
           <Typography variant="body2">Secret: {keyModal?.rawSecret}</Typography>
         </DialogContent>
-        <DialogActions><Button onClick={() => setKeyModal(null)}>I have saved these</Button></DialogActions>
+        <DialogActions><Button variant="contained" onClick={() => setKeyModal(null)}>I have saved these</Button></DialogActions>
       </Dialog>
     </Box>
   );

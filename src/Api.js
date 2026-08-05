@@ -39,8 +39,11 @@ const API = {
   // Products & loans
   PRODUCTS: '/products',
   product: (id) => `/products/${id}`,
+  PRODUCTS_DECOMMISSION: '/products/decommission',
+  productSubmit: (id) => `/products/${id}/submit`,
   ALL_PRODUCTS: '/loan/list-products',
   ALL_EMPLOYEES_LOAN: '/loan/list-employee-loan',
+  loanDetail: (id) => `/loan/${id}`,
 
   // Dashboard & audit
   DASHBOARD_OVERVIEW: '/dashboard/overview',
@@ -54,6 +57,11 @@ const API = {
   NOTIFICATIONS: '/notification/list',
   notificationRead: (id) => `/notification/read/${id}`,
   PENDING_RESPONSES: '/messages/pending-responses',
+  MANUAL_OUTGOING_MESSAGE: '/outgoing-message',
+  MANUAL_LOAN_STATUS_REQUEST: '/loan-status-request',
+  MESSAGE_LOGS: '/messages/logs',
+  messageResend: (messageId) => `/messages/${messageId}/resend`,
+  suggestedMessages: (loanId) => `/loan-actions/${loanId}/suggested-messages`,
 };
 
 export default API;
