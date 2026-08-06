@@ -5,6 +5,7 @@ import LockOpenOutlined from '@mui/icons-material/LockOpenOutlined';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import DeleteOutline from '@mui/icons-material/DeleteOutline';
 import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined';
+import PowerSettingsNewOutlined from '@mui/icons-material/PowerSettingsNewOutlined';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -21,24 +22,46 @@ import {
     FormControlLabel,
     FormHelperText,
     Chip,
+    Popover,
+    Box,
+    Divider,
+    Typography,
 } from "@mui/material";
+import ViewColumnOutlined from '@mui/icons-material/ViewColumnOutlined';
 import { getRequest, postRequest, putRequest, deleteRequest } from "../../ApiFunction";
 import API from "../../Api";
 import { toast } from "react-toastify";
 import { getESSErrorMessage, isESSSuccess } from "../../utils/essErrorHandler";
 import { useActiveTenant } from "../../hooks/useActiveTenant";
+import { formatNumber } from "../../utils/formatAmount";
 import TermsBulkImport from "./components/TermsBulkImport";
 import ReviewProductModal from "./components/ReviewProductModal";
 import ProductSubmitConfirmModal from "./components/ProductSubmitConfirmModal";
 
-// Combined status shown in the products list: `status` (draft/active - form completeness)
-// and `utumishiSyncStatus` (whether Utumishi has the current data) together decide the chip.
+// Combined status shown in the products list: `status` (draft/active - form completeness),
+// `isActive` (soft-deleted/decommissioned) and `utumishiSyncStatus` (whether Utumishi has the
+// current data) together decide the chip. isActive is checked ahead of sync status - a
+// decommissioned product's last sync state doesn't matter anymore.
 const rowStatusChip = (row) => {
     if (row.status === "draft") return { label: "Draft", color: "default", variant: "outlined" };
+    if (row.isActive === false) return { label: "Decommissioned", color: "default", variant: "outlined" };
     if (row.utumishiSyncStatus === "SYNC_FAILED") return { label: "Sync failed", color: "error" };
     if (row.utumishiSyncStatus === "SUBMITTED") return { label: "Submitted", color: "success" };
     if (row.utumishiSyncStatus === "EDITED_SINCE_SUBMIT") return { label: "Edited since submit", color: "warning" };
     return { label: "Not submitted", color: "default" };
+};
+
+// Namespaced so it doesn't collide with other pages' DataGrids (Loan, Users, etc. each have
+// their own instance) if they ever grow the same feature.
+const COLUMN_VISIBILITY_STORAGE_KEY = "ess2.products.columnVisibility";
+
+const loadStoredColumnVisibility = () => {
+    try {
+        const raw = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch {
+        return {};
+    }
 };
 
 const emptyProductFields = {
@@ -76,6 +99,11 @@ const Product = () => {
         ...emptyProductFields,
     });
     const [activeRows, setActiveRows] = useState([])
+    // Applied model drives the grid; pending model is what the popover's checkboxes reflect
+    // while it's open - toggling a checkbox doesn't touch the grid until Apply is clicked.
+    const [columnVisibilityModel, setColumnVisibilityModel] = useState(loadStoredColumnVisibility);
+    const [pendingColumnVisibilityModel, setPendingColumnVisibilityModel] = useState(loadStoredColumnVisibility);
+    const [columnsMenuAnchor, setColumnsMenuAnchor] = useState(null);
     const [errors, setErrors] = useState({});
     const [editMode, setEditMode] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState(null);
@@ -519,6 +547,13 @@ const Product = () => {
         }
     };
 
+    // Drives the existing bulk decommission dialog/confirm flow from a single row's action
+    // icon too, rather than duplicating the confirm-and-call logic.
+    const openDecommissionDialog = (rowId) => {
+        setSelectedProductCodes([rowId]);
+        setDecommissionDialogOpen(true);
+    };
+
     const handleDecommissionProducts = async () => {
         const productCodes = loanProducts
             .filter((p) => selectedProductCodes.includes(p.id))
@@ -595,6 +630,7 @@ const Product = () => {
                 mifosProductId: p.mifosProductId ?? '—',
                 utumishiSyncStatus: p.utumishiSyncStatus || "NOT_SUBMITTED",
                 status: p.status || "active",
+                isActive: p.isActive !== false,
             }));
             setActiveRows(newData);
         } catch (err) {
@@ -694,22 +730,14 @@ const Product = () => {
         [draftRows, activeRows]
     );
 
+    // Status and Action (Review/Edit/etc.) are placed right after the identifying columns -
+    // this DataGrid is the free @mui/x-data-grid (v5), which doesn't support column pinning
+    // (that's a DataGrid Pro feature), so "always visible without scrolling" has to come from
+    // column order instead.
     const columns = [
         { field: "productCode", headerName: "Product Code", width: 120 },
         { field: "mifosProductId", headerName: "MIFOS ID", width: 100 },
         { field: "name", headerName: "Product Name", width: 200 },
-        { field: "deductionCode", headerName: "Deduction Code", width: 130 },
-        { field: "minTenure", headerName: "Min Tenure", width: 110 },
-        { field: "maxTenure", headerName: "Max Tenure", width: 110 },
-        { field: "minAmount", headerName: "Min Amount", width: 130 },
-        { field: "maxAmount", headerName: "Max Amount", width: 130 },
-        { field: "interestRate", headerName: "Interest Rate (%)", width: 140 },
-        { field: "processingFee", headerName: "Processing Fee (%)", width: 150 },
-        { field: "insurance", headerName: "Insurance (%)", width: 120 },
-        { field: "repaymentType", headerName: "Repayment Type", width: 140 },
-        { field: "insuranceType", headerName: "Insurance Type", width: 140 },
-        { field: "forExecutive", headerName: "For Executive", width: 120 },
-        { field: "shariaFacility", headerName: "Sharia Facility", width: 130 },
         {
             field: "status",
             headerName: "Status",
@@ -720,46 +748,131 @@ const Product = () => {
                 return <Chip size="small" label={chip.label} color={chip.color} variant={chip.variant} />;
             },
         },
+        { field: "deductionCode", headerName: "Deduction Code", width: 130 },
+        { field: "minTenure", headerName: "Min Tenure", width: 110 },
+        { field: "maxTenure", headerName: "Max Tenure", width: 110 },
+        { field: "minAmount", headerName: "Min Amount", width: 130, valueFormatter: (v) => formatNumber(v.value) },
+        { field: "maxAmount", headerName: "Max Amount", width: 130, valueFormatter: (v) => formatNumber(v.value) },
+        { field: "interestRate", headerName: "Interest Rate (%)", width: 140 },
+        { field: "processingFee", headerName: "Processing Fee (%)", width: 150 },
+        { field: "insurance", headerName: "Insurance (%)", width: 120 },
+        { field: "repaymentType", headerName: "Repayment Type", width: 140 },
+        { field: "insuranceType", headerName: "Insurance Type", width: 140 },
+        { field: "forExecutive", headerName: "For Executive", width: 120 },
+        { field: "shariaFacility", headerName: "Sharia Facility", width: 130 },
         {
             field: "action",
             headerName: "Action",
             width: 180,
             sortable: false,
-            renderCell: (params) => (
-                params.row.status === "draft" ? (
-                    <div className="d-flex justify-content-center gap-2 align-items-center">
-                        <VisibilityOutlined
-                            sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
-                            onClick={() => openReviewDialog(params.row.id)}
-                        />
-                        <button className="custom-button" onClick={() => handleResumeDraft(params.row.id)}>Resume</button>
-                        <button className="custom-button" onClick={() => handleDiscardDraft(params.row.id)}>Discard</button>
-                    </div>
-                ) : (
+            renderCell: (params) => {
+                const row = params.row;
+
+                // Draft: still being filled in - preview via Review, or Resume/Discard.
+                if (row.status === "draft") {
+                    return (
+                        <div className="d-flex justify-content-center gap-2 align-items-center">
+                            <VisibilityOutlined
+                                sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
+                                onClick={() => openReviewDialog(row.id)}
+                            />
+                            <button className="custom-button" onClick={() => handleResumeDraft(row.id)}>Resume</button>
+                            <button className="custom-button" onClick={() => handleDiscardDraft(row.id)}>Discard</button>
+                        </div>
+                    );
+                }
+
+                // Decommissioned: retired, nothing left to do but look at what it was.
+                if (row.isActive === false) {
+                    return (
+                        <div className="d-flex justify-content-center gap-2 align-items-center">
+                            <VisibilityOutlined
+                                sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
+                                onClick={() => openReviewDialog(row.id)}
+                            />
+                        </div>
+                    );
+                }
+
+                // Submitted to Utumishi: live product. Editing/deleting it here wouldn't
+                // reach Utumishi, so the only supported actions are viewing it and
+                // decommissioning it (which does notify Utumishi).
+                if (row.utumishiSyncStatus === "SUBMITTED") {
+                    return (
+                        <div className="d-flex justify-content-center gap-2 align-items-center">
+                            <VisibilityOutlined
+                                sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
+                                onClick={() => openReviewDialog(row.id)}
+                            />
+                            <PowerSettingsNewOutlined
+                                sx={{ fontSize: 20, cursor: "pointer", color: "error.main" }}
+                                titleAccess="Decommission"
+                                onClick={() => openDecommissionDialog(row.id)}
+                            />
+                        </div>
+                    );
+                }
+
+                // Active but not yet submitted (or needs re-submit / retry): full set.
+                return (
                     <div className="d-flex justify-content-center gap-2 align-items-center">
                         <LockOpenOutlined
                             sx={{ fontSize: 20, cursor: "pointer", color: "green" }}
-                            onClick={() => console.log("Unlock product:", params.row.id)}
+                            onClick={() => console.log("Unlock product:", row.id)}
                         />
                         <VisibilityOutlined
                             sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
-                            onClick={() => openReviewDialog(params.row.id)}
+                            onClick={() => openReviewDialog(row.id)}
                         />
                         <EditOutlined
                             sx={{ fontSize: 20, cursor: "pointer", color: "blue" }}
-                            onClick={() => openEditDialog(params.row.id)}
+                            onClick={() => openEditDialog(row.id)}
                         />
                         <DeleteOutline
                             sx={{ fontSize: 20, cursor: "pointer", color: "red" }}
-                            onClick={() => openDeleteDialog(params.row.id, params.row.name)}
+                            onClick={() => openDeleteDialog(row.id, row.name)}
+                        />
+                        <PowerSettingsNewOutlined
+                            sx={{ fontSize: 20, cursor: "pointer", color: "error.main" }}
+                            titleAccess="Decommission"
+                            onClick={() => openDecommissionDialog(row.id)}
                         />
                     </div>
-                )
-            ),
+                );
+            },
         },
     ];
 
+    const openColumnsMenu = (event) => {
+        // Seed the pending copy from what's actually applied, so a previous unsaved edit
+        // (from opening the popover, toggling checkboxes, then dismissing without Apply)
+        // doesn't linger into the next time it's opened.
+        setPendingColumnVisibilityModel(columnVisibilityModel);
+        setColumnsMenuAnchor(event.currentTarget);
+    };
 
+    const closeColumnsMenu = () => {
+        setColumnsMenuAnchor(null);
+    };
+
+    const toggleColumnPending = (field) => {
+        setPendingColumnVisibilityModel((prev) => ({
+            ...prev,
+            // Undefined/true both mean "visible" (DataGrid's default), so absence of the key
+            // is treated as checked here too.
+            [field]: prev[field] === undefined ? false : !prev[field],
+        }));
+    };
+
+    const applyColumnVisibility = () => {
+        setColumnVisibilityModel(pendingColumnVisibilityModel);
+        try {
+            localStorage.setItem(COLUMN_VISIBILITY_STORAGE_KEY, JSON.stringify(pendingColumnVisibilityModel));
+        } catch {
+            // Non-fatal - the selection still applies for this session, just won't persist.
+        }
+        closeColumnsMenu();
+    };
 
     const paginationModel = { page: 0, pageSize: 5 };
 
@@ -788,17 +901,58 @@ const Product = () => {
                                     Decommission Selected ({selectedProductCodes.length})
                                 </button>
                             )}
+                            <button className="custom-button" onClick={openColumnsMenu}>
+                                <ViewColumnOutlined sx={{ fontSize: 18, verticalAlign: "text-bottom", mr: 0.5 }} />
+                                Columns
+                            </button>
                             <button className="custom-button" onClick={handleClickOpen('paper')}>Add Product</button>
                         </Stack>
                     </div>
+                    <Popover
+                        open={Boolean(columnsMenuAnchor)}
+                        anchorEl={columnsMenuAnchor}
+                        onClose={closeColumnsMenu}
+                        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                        transformOrigin={{ vertical: "top", horizontal: "right" }}
+                    >
+                        <Box sx={{ p: 2, width: 260 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1 }}>Show columns</Typography>
+                            <Stack sx={{ maxHeight: 320, overflowY: "auto" }}>
+                                {columns.map((col) => (
+                                    <FormControlLabel
+                                        key={col.field}
+                                        control={
+                                            <Checkbox
+                                                size="small"
+                                                checked={pendingColumnVisibilityModel[col.field] !== false}
+                                                onChange={() => toggleColumnPending(col.field)}
+                                            />
+                                        }
+                                        label={col.headerName}
+                                    />
+                                ))}
+                            </Stack>
+                            <Divider sx={{ my: 1 }} />
+                            <Stack direction="row" justifyContent="flex-end" spacing={1}>
+                                <button className="custom-button" onClick={closeColumnsMenu}>Cancel</button>
+                                <button className="custom-button" onClick={applyColumnVisibility}>Apply</button>
+                            </Stack>
+                        </Box>
+                    </Popover>
                     <Paper className="custom-paper">
                         <DataGrid
                             rows={loanProducts}
                             columns={columns}
+                            columnVisibilityModel={columnVisibilityModel}
+                            onColumnVisibilityModelChange={() => {
+                                // Intentionally a no-op - visibility is only ever changed via
+                                // the Columns popover's Apply button, not by any built-in
+                                // DataGrid UI (there isn't one enabled here) or stray events.
+                            }}
                             initialState={{ pagination: { paginationModel } }}
                             pageSizeOptions={[5, 10]}
                             checkboxSelection
-                            isRowSelectable={(params) => params.row.status !== "draft"}
+                            isRowSelectable={(params) => params.row.status !== "draft" && params.row.isActive !== false}
                             onRowSelectionModelChange={(model) => setSelectedProductCodes(model)}
                             rowSelectionModel={selectedProductCodes}
                             sx={{ border: 0 }}

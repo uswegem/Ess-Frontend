@@ -12,6 +12,7 @@ import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
+import { formatCurrency } from '../../../utils/formatAmount';
 
 // Fields required by PRODUCT_DETAIL, mirrored from the backend's REQUIRED_FIELDS_BY_MESSAGE_TYPE
 // (outgoingMessageValidator.js) so the operator sees the same gaps here that the backend would
@@ -27,8 +28,8 @@ const PRODUCT_DETAIL_FIELDS = [
     { label: 'Interest Rate', productField: 'interestRate' },
     { label: 'Processing Fee', productField: 'processingFee' },
     { label: 'Insurance', productField: 'insurance' },
-    { label: 'Max Amount', productField: 'maxAmount' },
-    { label: 'Min Amount', productField: 'minAmount' },
+    { label: 'Max Amount', productField: 'maxAmount', isAmount: true },
+    { label: 'Min Amount', productField: 'minAmount', isAmount: true },
     { label: 'Repayment Type', productField: 'repaymentType' },
     { label: 'Insurance Type', productField: 'insuranceType' },
 ];
@@ -56,6 +57,7 @@ const ReviewProductModal = ({ open, product, onClose, onEdit, onRequestSubmit })
     const syncStatus = SYNC_STATUS_LABEL[product.utumishiSyncStatus] || SYNC_STATUS_LABEL.NOT_SUBMITTED;
     const isRetry = product.utumishiSyncStatus === 'SYNC_FAILED';
     const isDraft = product.status === 'draft';
+    const isDecommissioned = product.isActive === false;
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth scroll="paper">
@@ -68,6 +70,8 @@ const ReviewProductModal = ({ open, product, onClose, onEdit, onRequestSubmit })
                         </Typography>
                         {isDraft ? (
                             <Chip size="small" label="Draft" color="default" variant="outlined" />
+                        ) : isDecommissioned ? (
+                            <Chip size="small" label="Decommissioned" color="default" variant="outlined" />
                         ) : (
                             <Chip size="small" label={syncStatus.label} color={syncStatus.color} />
                         )}
@@ -77,6 +81,12 @@ const ReviewProductModal = ({ open, product, onClose, onEdit, onRequestSubmit })
                         <Alert severity="info">
                             This product is still a draft. Use Edit to fill in the remaining required
                             fields and save it (not "Save Draft") before it can be submitted to Utumishi.
+                        </Alert>
+                    )}
+
+                    {isDecommissioned && (
+                        <Alert severity="info">
+                            This product has been decommissioned and is read-only.
                         </Alert>
                     )}
 
@@ -105,6 +115,8 @@ const ReviewProductModal = ({ open, product, onClose, onEdit, onRequestSubmit })
                                     <TableCell>
                                         {isMissing(product[f.productField]) ? (
                                             <Typography component="span" color="error">Missing</Typography>
+                                        ) : f.isAmount ? (
+                                            formatCurrency(product[f.productField], product.currency || 'TZS')
                                         ) : (
                                             String(product[f.productField])
                                         )}
@@ -129,15 +141,17 @@ const ReviewProductModal = ({ open, product, onClose, onEdit, onRequestSubmit })
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Close</Button>
-                <Button onClick={onEdit}>Edit</Button>
-                <Button
-                    variant="contained"
-                    color={isRetry ? 'error' : 'primary'}
-                    disabled={isDraft || missingFields.length > 0}
-                    onClick={onRequestSubmit}
-                >
-                    {isRetry ? 'Retry Submit' : 'Submit'}
-                </Button>
+                {!isDecommissioned && <Button onClick={onEdit}>Edit</Button>}
+                {!isDecommissioned && (
+                    <Button
+                        variant="contained"
+                        color={isRetry ? 'error' : 'primary'}
+                        disabled={isDraft || missingFields.length > 0}
+                        onClick={onRequestSubmit}
+                    >
+                        {isRetry ? 'Retry Submit' : 'Submit'}
+                    </Button>
+                )}
             </DialogActions>
         </Dialog>
     );

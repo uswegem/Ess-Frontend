@@ -13,6 +13,7 @@ import API from '../../Api';
 import { toast } from 'react-toastify';
 import { usePermissions } from '../../hooks/usePermissions';
 import { MESSAGE_TYPES, buildMessageDetails } from '../../services/messages/messageTypes';
+import { formatNumber } from '../../utils/formatAmount';
 
 const NOTIFIABLE_STATUSES = ['LOAN_CREATED', 'DISBURSED', 'FAILED'];
 
@@ -88,10 +89,7 @@ const LoanListing = () => {
       field: 'requestedAmount',
       headerName: 'Amount',
       width: 120,
-      valueGetter: (params) =>
-        params.row.requestedAmount != null
-          ? Number(params.row.requestedAmount).toLocaleString()
-          : '—',
+      valueGetter: (params) => formatNumber(params.row.requestedAmount),
     },
     { field: 'tenure', headerName: 'Tenure (mo)', width: 110 },
     {

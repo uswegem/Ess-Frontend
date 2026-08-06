@@ -15,6 +15,12 @@ import API from '../../Api';
 import { toast } from 'react-toastify';
 import { usePermissions } from '../../hooks/usePermissions';
 import { MESSAGE_TYPES, buildMessageDetails } from '../../services/messages/messageTypes';
+import { formatCurrency } from '../../utils/formatAmount';
+
+// InfoRow hides the whole row when value is null/undefined/'' - only run amounts through
+// formatCurrency when a real value is present, so a missing amount still hides its row
+// instead of rendering formatCurrency's "—" placeholder as if it were real data.
+const formatAmountForRow = (value) => (value === undefined || value === null || value === '' ? value : formatCurrency(value));
 
 const STATUS_COLORS = {
   DISBURSED: 'success',
@@ -157,8 +163,8 @@ const LoanDetail = () => {
 
           <Paper className="p-3">
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Employment Information</Typography>
-            <InfoRow label="Basic Salary" value={employment.basicSalary} />
-            <InfoRow label="Net Salary" value={employment.netSalary} />
+            <InfoRow label="Basic Salary" value={formatAmountForRow(employment.basicSalary)} />
+            <InfoRow label="Net Salary" value={formatAmountForRow(employment.netSalary)} />
             <InfoRow label="Employment Date" value={client.employmentDate} />
             <InfoRow label="Designation" value={employment.designationName} />
           </Paper>
@@ -167,7 +173,7 @@ const LoanDetail = () => {
         <Grid item xs={12} md={6}>
           <Paper className="p-3 mb-2">
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Loan Information</Typography>
-            <InfoRow label="Requested Amount" value={loan.requestedAmount ?? loanData.requestedAmount} />
+            <InfoRow label="Requested Amount" value={formatAmountForRow(loan.requestedAmount ?? loanData.requestedAmount)} />
             <InfoRow label="Product Code" value={loan.productCode ?? loanData.productCode} />
             <InfoRow label="Tenure" value={loan.tenure ?? loanData.tenure} />
             <InfoRow label="Interest Rate" value={loanData.interestRate ?? loanData.annualInterestRate} />
