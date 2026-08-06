@@ -16,6 +16,8 @@ import Login from './pages/login/Login.jsx';
 import { Navigate, useLocation } from 'react-router-dom';
 import { MenuOpen } from '@mui/icons-material';
 import { Toaster } from 'react-hot-toast';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useIdleLogout } from './hooks/useIdleLogout';
 import IdleLogoutWarning from './components/security/IdleLogoutWarning';
 import { logout } from './services/authService';
@@ -123,6 +125,12 @@ export default function App() {
           },
         }}
       />
+      {/* Separate from Toaster above (react-hot-toast) - a dozen pages call toast.error/
+          toast.success from react-toastify instead, which needs its own container to render
+          anything. Both libraries are kept side by side rather than migrating every page,
+          since react-hot-toast is still the active one for Settings/Login/ChangePassword/
+          UserDetails. */}
+      <ToastContainer position="top-right" autoClose={5000} />
       {router.pathname !== "/"
         ?
         <Box sx={{

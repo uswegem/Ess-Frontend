@@ -26,6 +26,7 @@ import {
     Box,
     Divider,
     Typography,
+    CircularProgress,
 } from "@mui/material";
 import ViewColumnOutlined from '@mui/icons-material/ViewColumnOutlined';
 import { getRequest, postRequest, putRequest, deleteRequest } from "../../ApiFunction";
@@ -105,6 +106,17 @@ const Product = () => {
     const [pendingColumnVisibilityModel, setPendingColumnVisibilityModel] = useState(loadStoredColumnVisibility);
     const [columnsMenuAnchor, setColumnsMenuAnchor] = useState(null);
     const [errors, setErrors] = useState({});
+    // Format-on-blur for Min/Max Amount: while a field is focused it shows the raw digits
+    // being typed (comma-formatting would fight cursor position); on blur it switches to the
+    // comma-formatted display via the shared formatNumber utility. `form.minAmount`/
+    // `form.maxAmount` themselves always hold the raw value - this tracks display state only.
+    const [amountFieldFocus, setAmountFieldFocus] = useState({ minAmount: false, maxAmount: false });
+    // Tracks which row + action (View/Edit only - the two actions that make a real API call
+    // directly on icon click, with no confirm dialog in between) is currently in flight, so
+    // the Action column can swap that one icon for a spinner and lock the rest of its row.
+    // Delete/Decommission already show equivalent feedback inside their own confirm dialog,
+    // which covers the row anyway, so they're intentionally not tracked here.
+    const [pendingRowAction, setPendingRowAction] = useState(null); // { rowId, action: 'view' | 'edit' }
     const [editMode, setEditMode] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -177,7 +189,27 @@ const Product = () => {
         setErrors((prev) => ({ ...prev, [field]: error }));
     };
 
- 
+    // Strips anything but digits/decimal point - defends against a comma-formatted value
+    // landing back in the field (e.g. pasted in) while it's supposed to hold a raw number.
+    const handleAmountChange = (field, rawValue) => {
+        handleFormChange(field, rawValue.replace(/[^0-9.]/g, ""));
+    };
+
+    const handleAmountFocus = (field) => {
+        setAmountFieldFocus((prev) => ({ ...prev, [field]: true }));
+    };
+
+    const handleAmountBlur = (field) => {
+        setAmountFieldFocus((prev) => ({ ...prev, [field]: false }));
+    };
+
+    // Raw digits while focused (so typing/cursor behaves like a normal number field);
+    // comma-formatted once blurred. form.minAmount/form.maxAmount themselves are untouched
+    // either way - this only decides what's shown in the input.
+    const amountDisplayValue = (field) =>
+        amountFieldFocus[field] ? form[field] : formatNumber(form[field], { emptyValue: "" });
+
+
     const resetForm = () => {
         setForm({
             ...getTenantFspDefaults(),
@@ -447,6 +479,7 @@ const Product = () => {
     };
 
     const openEditDialog = async (productId) => {
+        setPendingRowAction({ rowId: productId, action: 'edit' });
         try {
             const result = await getRequest(API.product(productId));
             const { success, data, message } = result.data;
@@ -486,6 +519,8 @@ const Product = () => {
             setScroll('paper');
         } catch (err) {
             toast.error(err.response?.data?.message || err.message);
+        } finally {
+            setPendingRowAction(null);
         }
     };
 
@@ -495,6 +530,7 @@ const Product = () => {
     };
 
     const openReviewDialog = async (productId) => {
+        setPendingRowAction({ rowId: productId, action: 'view' });
         try {
             const result = await getRequest(API.product(productId));
             const { success, data, message } = result.data;
@@ -506,6 +542,8 @@ const Product = () => {
             setReviewOpen(true);
         } catch (err) {
             toast.error(err.response?.data?.message || err.message);
+        } finally {
+            setPendingRowAction(null);
         }
     };
 
@@ -730,6 +768,34 @@ const Product = () => {
         [draftRows, activeRows]
     );
 
+    // Renders one Action-column icon with per-row/per-action loading feedback. `action` is
+    // 'view' | 'edit' for the two icons that make a real API call directly on click (no confirm
+    // dialog in between) - only those two ever show a spinner. `action: null` (Delete,
+    // Decommission, Unlock) never spinners itself, but still gets locked/greyed while a
+    // View/Edit fetch is in flight for this row, so it can't be clicked mid-fetch.
+    const renderActionIcon = (Icon, { row, action = null, onClick, color, titleAccess }) => {
+        const isRowBusy = pendingRowAction?.rowId === row.id;
+        const isThisPending = isRowBusy && pendingRowAction.action === action;
+
+        if (isThisPending) {
+            return <CircularProgress size={18} thickness={5} sx={{ color }} />;
+        }
+
+        return (
+            <Icon
+                sx={{
+                    fontSize: 20,
+                    color,
+                    cursor: isRowBusy ? "default" : "pointer",
+                    opacity: isRowBusy ? 0.4 : 1,
+                    pointerEvents: isRowBusy ? "none" : "auto",
+                }}
+                titleAccess={titleAccess}
+                onClick={isRowBusy ? undefined : onClick}
+            />
+        );
+    };
+
     // Status and Action (Review/Edit/etc.) are placed right after the identifying columns -
     // this DataGrid is the free @mui/x-data-grid (v5), which doesn't support column pinning
     // (that's a DataGrid Pro feature), so "always visible without scrolling" has to come from
@@ -772,10 +838,7 @@ const Product = () => {
                 if (row.status === "draft") {
                     return (
                         <div className="d-flex justify-content-center gap-2 align-items-center">
-                            <VisibilityOutlined
-                                sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
-                                onClick={() => openReviewDialog(row.id)}
-                            />
+                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "gray", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
                             <button className="custom-button" onClick={() => handleResumeDraft(row.id)}>Resume</button>
                             <button className="custom-button" onClick={() => handleDiscardDraft(row.id)}>Discard</button>
                         </div>
@@ -786,10 +849,7 @@ const Product = () => {
                 if (row.isActive === false) {
                     return (
                         <div className="d-flex justify-content-center gap-2 align-items-center">
-                            <VisibilityOutlined
-                                sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
-                                onClick={() => openReviewDialog(row.id)}
-                            />
+                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "gray", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
                         </div>
                     );
                 }
@@ -800,15 +860,8 @@ const Product = () => {
                 if (row.utumishiSyncStatus === "SUBMITTED") {
                     return (
                         <div className="d-flex justify-content-center gap-2 align-items-center">
-                            <VisibilityOutlined
-                                sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
-                                onClick={() => openReviewDialog(row.id)}
-                            />
-                            <PowerSettingsNewOutlined
-                                sx={{ fontSize: 20, cursor: "pointer", color: "error.main" }}
-                                titleAccess="Decommission"
-                                onClick={() => openDecommissionDialog(row.id)}
-                            />
+                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "gray", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
+                            {renderActionIcon(PowerSettingsNewOutlined, { row, color: "error.main", titleAccess: "Decommission", onClick: () => openDecommissionDialog(row.id) })}
                         </div>
                     );
                 }
@@ -816,27 +869,11 @@ const Product = () => {
                 // Active but not yet submitted (or needs re-submit / retry): full set.
                 return (
                     <div className="d-flex justify-content-center gap-2 align-items-center">
-                        <LockOpenOutlined
-                            sx={{ fontSize: 20, cursor: "pointer", color: "green" }}
-                            onClick={() => console.log("Unlock product:", row.id)}
-                        />
-                        <VisibilityOutlined
-                            sx={{ fontSize: 20, cursor: "pointer", color: "gray" }}
-                            onClick={() => openReviewDialog(row.id)}
-                        />
-                        <EditOutlined
-                            sx={{ fontSize: 20, cursor: "pointer", color: "blue" }}
-                            onClick={() => openEditDialog(row.id)}
-                        />
-                        <DeleteOutline
-                            sx={{ fontSize: 20, cursor: "pointer", color: "red" }}
-                            onClick={() => openDeleteDialog(row.id, row.name)}
-                        />
-                        <PowerSettingsNewOutlined
-                            sx={{ fontSize: 20, cursor: "pointer", color: "error.main" }}
-                            titleAccess="Decommission"
-                            onClick={() => openDecommissionDialog(row.id)}
-                        />
+                        {renderActionIcon(LockOpenOutlined, { row, color: "green", titleAccess: "Unlock", onClick: () => console.log("Unlock product:", row.id) })}
+                        {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "gray", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
+                        {renderActionIcon(EditOutlined, { row, action: "edit", color: "blue", titleAccess: "Edit", onClick: () => openEditDialog(row.id) })}
+                        {renderActionIcon(DeleteOutline, { row, color: "red", titleAccess: "Delete", onClick: () => openDeleteDialog(row.id, row.name) })}
+                        {renderActionIcon(PowerSettingsNewOutlined, { row, color: "error.main", titleAccess: "Decommission", onClick: () => openDecommissionDialog(row.id) })}
                     </div>
                 );
             },
@@ -1101,21 +1138,27 @@ const Product = () => {
                             <Stack direction="row" spacing={2}>
                                 <TextField
                                     label="Min Amount"
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     fullWidth
                                     size="small"
-                                    value={form.minAmount}
-                                    onChange={(e) => handleFormChange("minAmount", e.target.value)}
+                                    value={amountDisplayValue("minAmount")}
+                                    onChange={(e) => handleAmountChange("minAmount", e.target.value)}
+                                    onFocus={() => handleAmountFocus("minAmount")}
+                                    onBlur={() => handleAmountBlur("minAmount")}
                                     error={!!errors.minAmount}
                                     helperText={errors.minAmount}
                                 />
                                 <TextField
                                     label="Max Amount"
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     fullWidth
                                     size="small"
-                                    value={form.maxAmount}
-                                    onChange={(e) => handleFormChange("maxAmount", e.target.value)}
+                                    value={amountDisplayValue("maxAmount")}
+                                    onChange={(e) => handleAmountChange("maxAmount", e.target.value)}
+                                    onFocus={() => handleAmountFocus("maxAmount")}
+                                    onBlur={() => handleAmountBlur("maxAmount")}
                                     error={!!errors.maxAmount}
                                     helperText={errors.maxAmount}
                                 />
