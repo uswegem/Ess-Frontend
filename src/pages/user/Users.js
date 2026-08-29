@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Paper, Button, Dialog, DialogTitle, DialogContent, DialogActions,
+  Paper, Button, Chip, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, MenuItem, Box, Alert, Typography, InputAdornment, IconButton,
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -10,10 +10,11 @@ import { toast } from 'react-toastify';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { usePermissions } from '../../hooks/usePermissions';
 import {
-  listTenantUsers, createTenantUser, updateTenantUser, deactivateTenantUser,
+  listTenantUsers, createTenantUser, updateTenantUser, deactivateTenantUser, resetTenantUserPassword,
 } from '../../services/userService';
 import { TENANT_ROLES } from '../../constants/tenantRolePermissions';
 import RolePermissionsMatrixModal from '../../components/users/RolePermissionsMatrixModal';
+import ResetPasswordConfirmModal from '../../components/users/ResetPasswordConfirmModal';
 
 function copyToClipboard(value, label) {
   navigator.clipboard.writeText(value).then(
@@ -24,12 +25,14 @@ function copyToClipboard(value, label) {
 
 export default function Users() {
   const { tenantId } = useActiveTenant();
-  const { can } = usePermissions();
+  const { can, user: currentUser } = usePermissions();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [rolesMatrixOpen, setRolesMatrixOpen] = useState(false);
   const [credentials, setCredentials] = useState(null);
+  const [resetTarget, setResetTarget] = useState(null);
+  const [resetLoading, setResetLoading] = useState(false);
   const [form, setForm] = useState({
     email: '', fullName: '', role: 'support_staff', username: '', phone: '',
   });
@@ -50,6 +53,7 @@ export default function Users() {
         role: u.role,
         isActive: u.isActive !== false,
         userId: u.userId || u.user?._id,
+        customPermissions: u.customPermissions || [],
       }));
       setUsers(rows);
     } catch (err) {
@@ -116,17 +120,63 @@ export default function Users() {
     }
   };
 
+  const closeResetDialog = () => { if (!resetLoading) setResetTarget(null); };
+
+  const handleResetPassword = async () => {
+    if (!resetTarget) return;
+    setResetLoading(true);
+    try {
+      const result = await resetTenantUserPassword(tenantId, resetTarget.userId || resetTarget.id);
+      const issued = result.data?.credentials;
+      setResetTarget(null);
+      if (issued?.temporaryPassword) {
+        setCredentials({
+          username: issued.username,
+          email: issued.email,
+          password: issued.temporaryPassword,
+        });
+      } else {
+        toast.success('Password reset.');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const columns = [
-    { field: 'fullName', headerName: 'Name', flex: 1 },
-    { field: 'email', headerName: 'Email', flex: 1 },
-    { field: 'role', headerName: 'Role', width: 180 },
-    { field: 'isActive', headerName: 'Active', width: 100, valueGetter: (p) => (p.row.isActive ? 'Yes' : 'No') },
+    { field: 'fullName', headerName: 'Name', flex: 0.6, minWidth: 140 },
+    { field: 'email', headerName: 'Email', flex: 0.8, minWidth: 180 },
+    {
+      field: 'role',
+      headerName: 'Role',
+      width: 140,
+      sortable: false,
+      // Design shows Role specifically as the indigo pill variant (distinct from Active's
+      // green/gray below) - a "role chip" style, not a status-outcome pill.
+      renderCell: (p) => <Chip size="small" label={p.value} sx={{ bgcolor: 'statusPill.indigo.bg', color: 'statusPill.indigo.text' }} />,
+    },
+    {
+      field: 'isActive',
+      headerName: 'Active',
+      width: 90,
+      sortable: false,
+      renderCell: (p) => (
+        <Chip
+          size="small"
+          label={p.row.isActive ? 'Yes' : 'No'}
+          sx={p.row.isActive ? { bgcolor: 'statusPill.green.bg', color: 'statusPill.green.text' } : { bgcolor: 'statusPill.gray.bg', color: 'statusPill.gray.text' }}
+        />
+      ),
+    },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 220,
+      flex: 0.8,
+      minWidth: 360,
       renderCell: (params) => can('users:manage') && (
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
           <TextField
             select size="small" value={params.row.role}
             onChange={(e) => handleRoleChange(params.row, e.target.value)}
@@ -134,7 +184,20 @@ export default function Users() {
           >
             {TENANT_ROLES.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
           </TextField>
-          <Button size="small" color="error" onClick={() => handleDeactivate(params.row)}>Deactivate</Button>
+          <Box
+            component="span"
+            onClick={() => setResetTarget(params.row)}
+            sx={{ fontSize: 13, fontWeight: 600, color: '#B54708', cursor: 'pointer' }}
+          >
+            Reset Password
+          </Box>
+          <Box
+            component="span"
+            onClick={() => handleDeactivate(params.row)}
+            sx={{ fontSize: 13, fontWeight: 600, color: '#D92D20', cursor: 'pointer' }}
+          >
+            Deactivate
+          </Box>
         </Box>
       ),
     },
@@ -146,29 +209,40 @@ export default function Users() {
 
   return (
     <div className="p-3">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography variant="h5" component="h1">Tenant Users</Typography>
+          <Typography sx={{ fontSize: 22, fontWeight: 700, color: 'text.primary', letterSpacing: '-0.2px' }}>Tenant Users</Typography>
           <Button
             variant="outlined"
             size="small"
             startIcon={<InfoOutlinedIcon />}
             onClick={() => setRolesMatrixOpen(true)}
+            sx={{ borderRadius: '20px', borderColor: 'designBorder.input', color: '#344054' }}
           >
             Roles &amp; permissions
           </Button>
         </Box>
         {can('users:manage') && (
-          <Button variant="contained" onClick={() => setOpen(true)}>Invite User</Button>
+          <Button variant="contained" onClick={() => setOpen(true)} sx={{ height: 38 }}>Invite User</Button>
         )}
       </Box>
 
       <RolePermissionsMatrixModal
         open={rolesMatrixOpen}
         onClose={() => setRolesMatrixOpen(false)}
+        users={users}
+        tenantId={tenantId}
+        currentUserId={currentUser?._id}
+        onPermissionsChanged={fetchUsers}
       />
       <Paper sx={{ height: 520 }}>
-        <DataGrid rows={users} columns={columns} loading={loading} pageSizeOptions={[10, 25]} />
+        <DataGrid
+          rows={users}
+          columns={columns}
+          loading={loading}
+          pageSizeOptions={[10, 25]}
+          sx={{ border: 0, '& .MuiDataGrid-columnHeaders': { bgcolor: '#FAFBFC' } }}
+        />
       </Paper>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
@@ -254,6 +328,14 @@ export default function Users() {
           <Button variant="contained" onClick={closeCredentialsDialog}>Done</Button>
         </DialogActions>
       </Dialog>
+
+      <ResetPasswordConfirmModal
+        open={Boolean(resetTarget)}
+        userName={resetTarget?.fullName}
+        loading={resetLoading}
+        onCancel={closeResetDialog}
+        onConfirm={handleResetPassword}
+      />
     </div>
   );
 }

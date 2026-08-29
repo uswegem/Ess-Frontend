@@ -17,10 +17,11 @@ padding: 0;
 
 .spanName{
     margin-left: 16px;
-    color: #000000 ;
-    font-size: 22px;
-    font-family: "Nanum Gothic", sans-serif;
-    font-weight: 600;
+    color: #1A2233;
+    font-size: 19px;
+    font-family: inherit;
+    font-weight: 700;
+    letter-spacing: -0.2px;
 }
 
 .menuIcons{
@@ -62,12 +63,12 @@ li .MuiButtonBase-root:hover{
 .topRight{
     display: flex;
     align-items: center;
-    
+    gap: 12px;
 }
 .topbarWrapper{
     height: 100%;
     width: 100%;
-    padding: 0px;
+    padding: 0 8px;
     display: flex;
     align-items: center;
     justify-content: space-between;

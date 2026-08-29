@@ -7,10 +7,11 @@ export default function ReviewStep({ tenantId, form, health }) {
       <Typography>Tenant ID: {tenantId}</Typography>
       <Typography>FSP: {form.tenantName} ({form.fspCode})</Typography>
       <Typography>MIFOS mode: {form.mifosMode}</Typography>
-      {form.address.line1 && (
+      {(form.geo.line1 || form.geo.region) && (
         <Typography sx={{ mt: 1 }}>
-          Address: {[form.address.line1, form.address.city, form.address.region].filter(Boolean).join(', ')}
-          {form.address.country ? ` (${form.address.country})` : ''}
+          Address: {[form.geo.line1, form.geo.ward, form.geo.district, form.geo.region].filter(Boolean).join(', ')}
+          {form.geo.postCode ? ` ${form.geo.postCode}` : ''}
+          {form.geo.country ? ` (${form.geo.country})` : ''}
         </Typography>
       )}
       {health?.mifos && (

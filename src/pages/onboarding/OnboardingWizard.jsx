@@ -12,6 +12,7 @@ import {
 import { validateMifosConfig, getIntegrationHealth, uploadCertificates } from '../../services/tenantService';
 import { createApiKey } from '../../services/apiKeyService';
 import { buildMifosConfigPayload } from '../../utils/mifosConfig';
+import { getPostcode } from '../../utils/tanzaniaGeo';
 import CompanyInfo from '../../components/OnboardingWizard/CompanyInfo';
 import MifosConfig from '../../components/OnboardingWizard/MifosConfig';
 import ApiKeySetup from '../../components/OnboardingWizard/ApiKeySetup';
@@ -53,12 +54,20 @@ function OnboardingStepIcon({ active, completed, icon }) {
 
 const STEPS = ['Organization', 'MIFOS Config', 'API Keys & Certificates', 'Review', 'Submit'];
 
-const EMPTY_ADDRESS = {
-  line1: '',
-  line2: '',
-  city: '',
-  region: '',
+// UI-only cascade state (Country -> Region -> District -> Ward -> auto-filled Post Code ->
+// Address Line 1). Kept separate from `form.address` (the shape actually sent to the
+// backend) because Tenant.js/tenantSchemas.js's addressSchema only has
+// line1/line2/city/region/country - no district/ward/postCode - and Joi rejects unknown
+// keys by default. Backend is out of scope for this change, so buildCompanyInfo() below
+// maps this richer cascade down into that fixed shape instead (district -> city,
+// ward+postCode -> a formatted line2) rather than sending new keys the backend would 400 on.
+const EMPTY_GEO = {
   country: 'TZ',
+  region: '',
+  district: '',
+  ward: '',
+  postCode: '',
+  line1: '',
 };
 
 export default function OnboardingWizard() {
@@ -79,7 +88,7 @@ export default function OnboardingWizard() {
     contactPerson: '',
     contactPhone: '',
     fspName: '',
-    address: { ...EMPTY_ADDRESS },
+    geo: { ...EMPTY_GEO },
     mifosMode: 'inherit_default',
     mifosBaseUrl: '',
     mifosTenantId: '',
@@ -94,11 +103,37 @@ export default function OnboardingWizard() {
     }
   }, [routeTenantId]);
 
-  const updateAddress = (field, value) => {
+  // Cascading updates: changing a parent clears every field that depends on it (approved
+  // behavior change - "each dropdown cascading from its parent (changing a parent clears
+  // its children)"). Post Code is never set directly by the user - it's derived from
+  // region+district+ward via getPostcode() whenever ward changes.
+  const updateGeoCountry = (value) => {
+    setForm((f) => ({ ...f, geo: { ...EMPTY_GEO, country: value, line1: f.geo.line1 } }));
+  };
+  const updateGeoRegion = (value) => {
+    setForm((f) => ({ ...f, geo: { ...f.geo, region: value, district: '', ward: '', postCode: '' } }));
+  };
+  const updateGeoDistrict = (value) => {
+    setForm((f) => ({ ...f, geo: { ...f.geo, district: value, ward: '', postCode: '' } }));
+  };
+  const updateGeoWard = (value) => {
     setForm((f) => ({
       ...f,
-      address: { ...f.address, [field]: value },
+      geo: { ...f.geo, ward: value, postCode: getPostcode(f.geo.region, f.geo.district, value) },
     }));
+  };
+  const updateGeoLine1 = (value) => {
+    setForm((f) => ({ ...f, geo: { ...f.geo, line1: value } }));
+  };
+
+  // Parses buildCompanyInfo()'s own line2 encoding back out, for resuming a draft this app
+  // saved. Best-effort only - a draft saved before this change (or edited by something else)
+  // won't have a matching line2 format, in which case ward/postCode are just left blank and
+  // the operator re-picks them; district still recovers from `city` either way.
+  const parseGeoLine2 = (line2) => {
+    const wardMatch = /Ward:\s*([^,]+)/.exec(line2 || '');
+    const postCodeMatch = /Post Code:\s*(\S+)/.exec(line2 || '');
+    return { ward: wardMatch?.[1]?.trim() || '', postCode: postCodeMatch?.[1]?.trim() || '' };
   };
 
   const loadDraft = async (id) => {
@@ -106,6 +141,7 @@ export default function OnboardingWizard() {
       const result = await getDraft(id);
       const t = result.data?.tenant || result.data;
       setTenantId(t.tenantId || id);
+      const { ward, postCode } = parseGeoLine2(t.address?.line2);
       setForm((f) => ({
         ...f,
         tenantName: t.tenantName || f.tenantName,
@@ -114,12 +150,13 @@ export default function OnboardingWizard() {
         contactPerson: t.contactPerson || f.contactPerson,
         contactPhone: t.contactPhone || f.contactPhone,
         fspName: t.fspName || f.fspName,
-        address: {
-          line1: t.address?.line1 || '',
-          line2: t.address?.line2 || '',
-          city: t.address?.city || '',
-          region: t.address?.region || '',
+        geo: {
           country: t.address?.country || 'TZ',
+          region: t.address?.region || '',
+          district: t.address?.city || '',
+          ward,
+          postCode,
+          line1: t.address?.line1 || '',
         },
         mifosMode: t.mifosConfig?.mode || f.mifosMode,
         mifosBaseUrl: t.mifosConfig?.baseUrl || f.mifosBaseUrl,
@@ -141,12 +178,19 @@ export default function OnboardingWizard() {
       contactEmail: form.contactEmail,
       contactPhone: form.contactPhone,
     };
-    const { line1, line2, city, region, country } = form.address;
-    if (line1?.trim() || line2?.trim() || city?.trim() || region?.trim()) {
+    const { line1, region, district, ward, postCode, country } = form.geo;
+    if (line1?.trim() || region?.trim() || district?.trim()) {
+      // Maps the real cascade down into the backend's fixed address shape (line1/line2/
+      // city/region/country - see EMPTY_GEO's comment for why). District -> city; Ward +
+      // Post Code -> a formatted line2, parsed back out by parseGeoLine2() above when a
+      // draft is resumed.
+      const line2Parts = [];
+      if (ward) line2Parts.push(`Ward: ${ward}`);
+      if (postCode) line2Parts.push(`Post Code: ${postCode}`);
       companyInfo.address = {
         line1: line1?.trim() || '',
-        line2: line2?.trim() || '',
-        city: city?.trim() || '',
+        line2: line2Parts.join(', '),
+        city: district?.trim() || '',
         region: region?.trim() || '',
         country: country || 'TZ',
       };
@@ -263,7 +307,11 @@ export default function OnboardingWizard() {
           <CompanyInfo
             form={form}
             setForm={setForm}
-            updateAddress={updateAddress}
+            updateGeoCountry={updateGeoCountry}
+            updateGeoRegion={updateGeoRegion}
+            updateGeoDistrict={updateGeoDistrict}
+            updateGeoWard={updateGeoWard}
+            updateGeoLine1={updateGeoLine1}
             fspAvailable={fspAvailable}
             onCheckAvailability={async () => {
               const r = await validateFspCode(form.fspCode, tenantId);
@@ -294,7 +342,7 @@ export default function OnboardingWizard() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>FSP Onboarding</Typography>
+      <Typography sx={{ fontSize: 22, fontWeight: 700, color: 'text.primary', letterSpacing: '-0.2px', mb: 2 }}>FSP Onboarding</Typography>
       <Stepper activeStep={activeStep} connector={<OnboardingStepConnector />} sx={{ mb: 3 }}>
         {STEPS.map((label) => (
           <Step key={label}>

@@ -159,6 +159,7 @@ const LoanDetail = () => {
             <InfoRow label="Email" value={client.emailAddress} />
             <InfoRow label="Sex" value={client.sex === 'M' ? 'Male' : client.sex === 'F' ? 'Female' : client.sex} />
             <InfoRow label="Bank Account Number" value={client.bankAccountNumber} />
+            <InfoRow label="Swift Code" value={client.swiftCode} />
           </Paper>
 
           <Paper className="p-3">
@@ -176,9 +177,15 @@ const LoanDetail = () => {
             <InfoRow label="Requested Amount" value={formatAmountForRow(loan.requestedAmount ?? loanData.requestedAmount)} />
             <InfoRow label="Product Code" value={loan.productCode ?? loanData.productCode} />
             <InfoRow label="Tenure" value={loan.tenure ?? loanData.tenure} />
-            <InfoRow label="Interest Rate" value={loanData.interestRate ?? loanData.annualInterestRate} />
-            <InfoRow label="Processing Fee" value={loanData.processingFee} />
-            <InfoRow label="Insurance" value={loanData.insurance} />
+            <InfoRow label="Total Interest Amount" value={formatAmountForRow(loanData.interestRate ?? loanData.annualInterestRate)} />
+            <InfoRow label="Total Processing Fee" value={formatAmountForRow(loanData.processingFee)} />
+            <InfoRow label="Total Insurance Premium" value={formatAmountForRow(loanData.insurance)} />
+            <InfoRow
+              label="Total Amount to Pay"
+              value={formatAmountForRow(
+                loan.totalAmountToPay ?? (Number(loanData.requestedAmount) + Number(loanData.interestRate))
+              )}
+            />
             <InfoRow label="Loan Purpose" value={loanData.loanPurpose} />
             <InfoRow label="Funding" value={loanData.funding} />
           </Paper>

@@ -29,10 +29,10 @@ function formatTimestamp(value) {
 }
 
 const MessageHistoryCard = ({ rows, loading, hasLoan }) => (
-  <Paper className="p-3">
+  <Paper sx={{ p: '20px' }}>
     <div className="d-flex align-items-center gap-2 mb-2">
-      <AccessTimeIcon fontSize="small" />
-      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+      <AccessTimeIcon fontSize="small" sx={{ color: 'text.primary' }} />
+      <Typography sx={{ fontSize: 14, fontWeight: 700, color: 'text.primary' }}>
         History
       </Typography>
     </div>
@@ -44,7 +44,7 @@ const MessageHistoryCard = ({ rows, loading, hasLoan }) => (
     )}
 
     {!loading && !hasLoan && (
-      <Typography variant="body2" color="text.secondary">
+      <Typography sx={{ fontSize: 13, color: 'text.muted' }}>
         Select a loan to see history
       </Typography>
     )}

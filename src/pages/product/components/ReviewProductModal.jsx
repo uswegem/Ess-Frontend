@@ -7,17 +7,18 @@ import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableRow from '@mui/material/TableRow';
 import { formatCurrency } from '../../../utils/formatAmount';
 
 // Fields required by PRODUCT_DETAIL, mirrored from the backend's REQUIRED_FIELDS_BY_MESSAGE_TYPE
 // (outgoingMessageValidator.js) so the operator sees the same gaps here that the backend would
 // otherwise reject at Submit time. Label is what's shown; productField is the key on the product
 // document; emptyCheck lets numeric 0 count as "provided" (only "", null, undefined are gaps).
+// Unchanged from before this restyle - still drives missingFields/Submit-disabled below.
+// productName/productDescription stay in this list (still required, still block Submit if
+// missing) even though they're no longer rendered as their own grid row below - name moves to
+// the modal title, description to the callout box, matching the design's layout.
 const PRODUCT_DETAIL_FIELDS = [
     { label: 'Deduction Code', productField: 'deductionCode' },
     { label: 'Product Code', productField: 'productCode' },
@@ -43,6 +44,47 @@ const SYNC_STATUS_LABEL = {
     SYNC_FAILED: { label: 'Sync failed', color: 'error' },
 };
 
+// Same statusPill token mapping as Product.js's rowStatusChip - see that file's comment for
+// why this goes through sx instead of Chip's `color` prop.
+const STATUS_PILL_COLOR_MAP = { success: 'green', error: 'red', default: 'gray' };
+const statusPillSx = (color, variant) => {
+    const pillKey = STATUS_PILL_COLOR_MAP[color];
+    if (!pillKey) return {}; // "warning" - no design-token equivalent, falls through to Chip's own default color
+    return {
+        bgcolor: variant === 'outlined' ? 'transparent' : `statusPill.${pillKey}.bg`,
+        color: `statusPill.${pillKey}.text`,
+        borderColor: variant === 'outlined' ? `statusPill.${pillKey}.text` : undefined,
+    };
+};
+
+// Design-handoff's grouped-sections field grid: a section label above a responsive 2-column
+// (auto-fit minmax(220,1fr), same pattern as the approved "narrow form" fixes elsewhere) grid
+// of label/value pairs.
+function FieldGroup({ title, fields, product }) {
+    return (
+        <Box sx={{ mb: 2.5 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.muted', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1.25 }}>
+                {title}
+            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px 16px' }}>
+                {fields.map((f) => (
+                    <Box key={f.productField}>
+                        <Typography sx={{ fontSize: 12, color: 'text.muted', mb: 0.25 }}>{f.label}</Typography>
+                        {isMissing(product[f.productField]) ? (
+                            <Typography sx={{ fontSize: 14, fontWeight: 500 }} color="error">Missing</Typography>
+                        ) : (
+                            <Typography sx={{ fontSize: 14, fontWeight: 500, color: 'text.primary' }}>
+                                {f.isAmount ? formatCurrency(product[f.productField], product.currency || 'TZS') : String(product[f.productField])}
+                                {f.suffix || ''}
+                            </Typography>
+                        )}
+                    </Box>
+                ))}
+            </Box>
+        </Box>
+    );
+}
+
 // Read-only summary of a product's currently saved data, opened from the products list'
 // "Review" action. Offers Edit (back to the Add/Edit modal, no message sent) and Submit
 // (validates required fields, then hands off to the confirm-before-send step).
@@ -59,24 +101,26 @@ const ReviewProductModal = ({ open, product, onClose, onEdit, onRequestSubmit })
     const isDraft = product.status === 'draft';
     const isDecommissioned = product.isActive === false;
 
-    return (
-        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth scroll="paper">
-            <DialogTitle>Review Product</DialogTitle>
-            <DialogContent dividers>
-                <Stack spacing={2}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                            {product.productName || product.productCode}
-                        </Typography>
-                        {isDraft ? (
-                            <Chip size="small" label="Draft" color="default" variant="outlined" />
-                        ) : isDecommissioned ? (
-                            <Chip size="small" label="Decommissioned" color="default" variant="outlined" />
-                        ) : (
-                            <Chip size="small" label={syncStatus.label} color={syncStatus.color} />
-                        )}
-                    </Stack>
+    const byField = (field) => PRODUCT_DETAIL_FIELDS.find((f) => f.productField === field);
 
+    return (
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth scroll="paper" PaperProps={{ sx: { borderRadius: '14px' } }}>
+            <DialogTitle sx={{ borderBottom: '1px solid', borderColor: 'designBorder.subtle' }}>
+                <Stack direction="row" spacing={1.25} alignItems="center">
+                    <Typography sx={{ fontSize: 17, fontWeight: 700, color: 'text.primary' }}>
+                        {product.productName || product.productCode}
+                    </Typography>
+                    {isDraft ? (
+                        <Chip size="small" label="Draft" variant="outlined" sx={statusPillSx('default', 'outlined')} />
+                    ) : isDecommissioned ? (
+                        <Chip size="small" label="Decommissioned" variant="outlined" sx={statusPillSx('default', 'outlined')} />
+                    ) : (
+                        <Chip size="small" label={syncStatus.label} sx={statusPillSx(syncStatus.color)} />
+                    )}
+                </Stack>
+            </DialogTitle>
+            <DialogContent sx={{ pt: 2.5 }}>
+                <Stack spacing={2}>
                     {isDraft && (
                         <Alert severity="info">
                             This product is still a draft. Use Edit to fill in the remaining required
@@ -107,47 +151,96 @@ const ReviewProductModal = ({ open, product, onClose, onEdit, onRequestSubmit })
                         </Alert>
                     )}
 
-                    <Table size="small">
-                        <TableBody>
-                            {PRODUCT_DETAIL_FIELDS.map((f) => (
-                                <TableRow key={f.productField}>
-                                    <TableCell sx={{ color: 'text.secondary', width: '45%' }}>{f.label}</TableCell>
-                                    <TableCell>
-                                        {isMissing(product[f.productField]) ? (
-                                            <Typography component="span" color="error">Missing</Typography>
-                                        ) : f.isAmount ? (
-                                            formatCurrency(product[f.productField], product.currency || 'TZS')
-                                        ) : (
-                                            String(product[f.productField])
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            <TableRow>
-                                <TableCell sx={{ color: 'text.secondary' }}>For Executive</TableCell>
-                                <TableCell>{product.forExecutive ? 'Yes' : 'No'}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell sx={{ color: 'text.secondary' }}>Sharia Facility</TableCell>
-                                <TableCell>{product.shariaFacility ? 'Yes' : 'No'}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell sx={{ color: 'text.secondary' }}>Terms & Conditions</TableCell>
-                                <TableCell>{(product.termsConditions || []).length} term(s)</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
+                    {/* Callout box - product.productDescription is still one of the required
+                        PRODUCT_DETAIL_FIELDS above (missing state already surfaced via the Alert
+                        banner), this is just where its value is displayed. */}
+                    <Box sx={{ bgcolor: 'designBackground.pageAlt', borderRadius: '10px', p: '14px 16px', fontSize: 14, lineHeight: 1.5, color: 'text.secondary' }}>
+                        {product.productDescription || 'No description provided.'}
+                    </Box>
+
+                    <FieldGroup
+                        title="Identifiers"
+                        product={product}
+                        fields={[byField('deductionCode'), byField('productCode')]}
+                    />
+                    <FieldGroup
+                        title="Terms & Pricing"
+                        product={product}
+                        fields={[
+                            { ...byField('minTenure'), suffix: ' mo' },
+                            { ...byField('maxTenure'), suffix: ' mo' },
+                            { ...byField('interestRate'), suffix: '%' },
+                            { ...byField('processingFee'), suffix: '%' },
+                            { ...byField('insurance'), suffix: '%' },
+                            byField('insuranceType'),
+                            byField('repaymentType'),
+                        ]}
+                    />
+                    {/* Not a PRODUCT_DETAIL field (no Utumishi spec equivalent, ess2-internal
+                        only) - never part of PRODUCT_DETAIL_FIELDS/missingFields, same as before
+                        this restyle. Handled as its own cell (not via FieldGroup's generic field
+                        list) because it has its own default-value/"(default)" annotation logic
+                        that doesn't apply to any other field. */}
+                    <Box sx={{ mt: -1.5, mb: 2.5 }}>
+                        <Typography sx={{ fontSize: 12, color: 'text.muted', mb: 0.25 }}>Other Charges</Typography>
+                        <Typography sx={{ fontSize: 14, fontWeight: 500, color: 'text.primary' }}>
+                            {formatCurrency(isMissing(product.otherCharges) ? 50000 : product.otherCharges, product.currency || 'TZS')}
+                            {isMissing(product.otherCharges) && (
+                                <Typography component="span" sx={{ fontSize: 12 }} color="text.muted"> (default)</Typography>
+                            )}
+                        </Typography>
+                    </Box>
+                    <FieldGroup
+                        title="Amount Limits"
+                        product={product}
+                        fields={[byField('minAmount'), byField('maxAmount')]}
+                    />
+
+                    <Box>
+                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.muted', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1.25 }}>
+                            Eligibility
+                        </Typography>
+                        <Stack direction="row" spacing={2.5}>
+                            <Stack direction="row" spacing={0.75} alignItems="center">
+                                <Typography sx={{ fontSize: 13, color: 'text.muted' }}>For Executive</Typography>
+                                <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.secondary' }}>
+                                    {product.forExecutive ? 'Yes' : 'No'}
+                                </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={0.75} alignItems="center">
+                                <Typography sx={{ fontSize: 13, color: 'text.muted' }}>Sharia Facility</Typography>
+                                <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.secondary' }}>
+                                    {product.shariaFacility ? 'Yes' : 'No'}
+                                </Typography>
+                            </Stack>
+                            <Stack direction="row" spacing={0.75} alignItems="center">
+                                <Typography sx={{ fontSize: 13, color: 'text.muted' }}>Terms & Conditions</Typography>
+                                <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.secondary' }}>
+                                    {(product.termsConditions || []).length} term(s)
+                                </Typography>
+                            </Stack>
+                        </Stack>
+                    </Box>
                 </Stack>
             </DialogContent>
-            <DialogActions>
-                <Button onClick={onClose}>Close</Button>
-                {!isDecommissioned && <Button onClick={onEdit}>Edit</Button>}
+            <DialogActions sx={{ borderTop: '1px solid', borderColor: 'designBorder.subtle', p: '16px 24px' }}>
+                <Button onClick={onClose} sx={{ color: 'primary.main', textTransform: 'none', fontWeight: 600 }}>Close</Button>
+                {!isDecommissioned && (
+                    <Button
+                        onClick={onEdit}
+                        variant="outlined"
+                        sx={{ borderColor: 'designBorder.input', color: '#344054', textTransform: 'none', fontWeight: 600 }}
+                    >
+                        Edit
+                    </Button>
+                )}
                 {!isDecommissioned && (
                     <Button
                         variant="contained"
                         color={isRetry ? 'error' : 'primary'}
                         disabled={isDraft || missingFields.length > 0}
                         onClick={onRequestSubmit}
+                        sx={{ textTransform: 'none', fontWeight: 600 }}
                     >
                         {isRetry ? 'Retry Submit' : 'Submit'}
                     </Button>

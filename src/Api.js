@@ -8,6 +8,8 @@ const API = {
   SELECT_TENANT: '/auth/select-tenant',
   PROFILE: '/auth/profile',
   CHANGE_PASSWORD: '/auth/change-password',
+  FORGOT_PASSWORD: '/auth/forgot-password',
+  RESET_PASSWORD: '/auth/reset-password',
 
   // Tenants
   TENANTS: '/tenants',
@@ -19,6 +21,8 @@ const API = {
   tenantAudit: (id) => `/tenants/${id}/audit`,
   tenantUsers: (id) => `/tenants/${id}/users`,
   tenantUser: (tenantId, userId) => `/tenants/${tenantId}/users/${userId}`,
+  tenantUserResetPassword: (tenantId, userId) => `/tenants/${tenantId}/users/${userId}/reset-password`,
+  tenantUserPermissions: (tenantId, userId) => `/tenants/${tenantId}/users/${userId}/permissions`,
   tenantApiKeys: (id) => `/tenants/${id}/api-keys`,
   tenantApiKey: (tenantId, keyId) => `/tenants/${tenantId}/api-keys/${keyId}`,
   tenantApiKeyUsage: (tenantId, keyId) => `/tenants/${tenantId}/api-keys/${keyId}/usage`,
@@ -43,12 +47,15 @@ const API = {
   productSubmit: (id) => `/products/${id}/submit`,
   ALL_PRODUCTS: '/loan/list-products',
   ALL_EMPLOYEES_LOAN: '/loan/list-employee-loan',
+  ALL_EMPLOYEES_LOAN_EXPORT_PDF: '/loan/list-employee-loan/export/pdf',
   loanDetail: (id) => `/loan/${id}`,
 
   // Dashboard & audit
   DASHBOARD_OVERVIEW: '/dashboard/overview',
   DASHBOARD_ACTIVITY: '/dashboard/activity',
   DASHBOARD_MESSAGES: '/dashboard/messages',
+  dashboardDetail: (metric) => `/dashboard/detail/${metric}`,
+  dashboardDetailExportPdf: (metric) => `/dashboard/detail/${metric}/export/pdf`,
   MIFOS_HEALTH: '/mifos/health',
   AUDIT_LOGS: '/audit/logs',
   AUDIT_STATS: '/audit/stats',
@@ -58,6 +65,7 @@ const API = {
   notificationRead: (id) => `/notification/read/${id}`,
   PENDING_RESPONSES: '/messages/pending-responses',
   MANUAL_OUTGOING_MESSAGE: '/outgoing-message',
+  VALIDATE_OUTGOING_MESSAGE: '/outgoing-message/validate',
   MANUAL_LOAN_STATUS_REQUEST: '/loan-status-request',
   MESSAGE_LOGS: '/messages/logs',
   messageResend: (messageId) => `/messages/${messageId}/resend`,

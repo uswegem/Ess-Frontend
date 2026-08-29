@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Paper, Typography, TextField, MenuItem } from '@mui/material';
+import { Paper, Typography, TextField, MenuItem, Chip } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { getAuditLogs } from '../../services/auditLogService';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
@@ -43,27 +43,42 @@ export default function AuditLogs() {
   }, [tenantId, actionFilter, statusFilter, debouncedLoad]);
 
   const columns = [
-    { field: 'action', headerName: 'Action', width: 160 },
+    { field: 'action', headerName: 'Action', width: 160, renderCell: (p) => <span style={{ fontFamily: 'monospace', fontSize: 13, color: '#475467' }}>{p.value}</span> },
     { field: 'description', headerName: 'Description', flex: 1 },
-    { field: 'status', headerName: 'Status', width: 100 },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 110,
+      sortable: false,
+      renderCell: (p) => (
+        <Chip
+          size="small"
+          label={p.value}
+          sx={p.value === 'success'
+            ? { bgcolor: 'statusPill.green.bg', color: 'statusPill.green.text' }
+            : { bgcolor: 'statusPill.red.bg', color: 'statusPill.red.text' }}
+        />
+      ),
+    },
     {
       field: 'createdAt',
       headerName: 'Time',
-      width: 180,
+      width: 190,
       valueGetter: (p) => new Date(p.row.createdAt).toLocaleString(),
     },
   ];
 
   return (
     <div className="p-3">
-      <Typography variant="h5" sx={{ mb: 2 }}>Audit Logs</Typography>
-      <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+      <Typography sx={{ fontSize: 22, fontWeight: 700, color: 'text.primary', letterSpacing: '-0.2px', mb: 2.5 }}>Audit Logs</Typography>
+      <Paper sx={{ p: '16px 20px', mb: 2, display: 'flex', gap: 1.75, flexWrap: 'wrap' }}>
         <TextField
           size="small"
           label="Filter by action"
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
           aria-label="Filter audit logs by action"
+          sx={{ flex: 1, minWidth: 200 }}
         />
         <TextField
           select
@@ -71,7 +86,7 @@ export default function AuditLogs() {
           label="Status"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          sx={{ minWidth: 140 }}
+          sx={{ minWidth: 180 }}
         >
           <MenuItem value="">All</MenuItem>
           <MenuItem value="success">Success</MenuItem>
@@ -79,7 +94,18 @@ export default function AuditLogs() {
         </TextField>
       </Paper>
       <Paper sx={{ height: 520 }}>
-        <DataGrid rows={rows} columns={columns} loading={loading} pageSizeOptions={[25, 50]} />
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          loading={loading}
+          pageSizeOptions={[25, 50]}
+          getRowClassName={(p) => (p.indexRelativeToCurrentPage % 2 === 0 ? 'auditRowEven' : 'auditRowOdd')}
+          sx={{
+            border: 0,
+            '& .MuiDataGrid-columnHeaders': { bgcolor: '#FAFBFC' },
+            '& .auditRowOdd': { bgcolor: '#FAFBFC' },
+          }}
+        />
       </Paper>
     </div>
   );

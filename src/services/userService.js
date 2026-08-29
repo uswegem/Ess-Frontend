@@ -13,5 +13,11 @@ export const updateTenantUser = (tenantId, userId, payload) =>
 export const deactivateTenantUser = (tenantId, userId) =>
   deleteRequest(API.tenantUser(tenantId, userId)).then((r) => r.data);
 
+export const resetTenantUserPassword = (tenantId, userId) =>
+  postRequest(API.tenantUserResetPassword(tenantId, userId)).then((r) => r.data);
+
+export const updateTenantUserPermissions = (tenantId, userId, permissions) =>
+  putRequest(API.tenantUserPermissions(tenantId, userId), { permissions }).then((r) => r.data);
+
 export const listPlatformUsers = () =>
   getRequest(API.USERS).then((r) => r.data);

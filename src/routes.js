@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard'));
+const DashboardDetail = lazy(() => import('./pages/dashboard/DashboardDetail'));
 const TenantsList = lazy(() => import('./pages/tenants/TenantsList'));
 const OnboardingWizard = lazy(() => import('./pages/onboarding/OnboardingWizard'));
 const Settings = lazy(() => import('./pages/settings/Settings'));
@@ -18,6 +19,7 @@ const ManualMessageTrigger = lazy(() => import('./pages/messages/ManualMessageTr
 
 const routes = [
   { path: '/dashboard', Component: Dashboard },
+  { path: '/dashboard/detail/:metric', Component: DashboardDetail },
   { path: '/tenants', Component: TenantsList },
   { path: '/onboarding', Component: OnboardingWizard },
   { path: '/onboarding/:tenantId', Component: OnboardingWizard },

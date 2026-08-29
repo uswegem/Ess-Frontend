@@ -58,10 +58,40 @@ const theme = createTheme({
 
     text: {
       primary: '#1A1D29',
-      secondary: '#6B7280',
+      // Changed from #6B7280 to the design-token handoff's value, per explicit confirmation -
+      // this darkens every existing color="text.secondary" usage app-wide, not just redesigned
+      // screens.
+      secondary: '#475467',
+      // New from the design-token handoff - no standard MUI slot, access via
+      // theme.palette.text.muted. (The design's other "muted" value, #6B7280, is what
+      // text.secondary used to be - already effectively covered, not duplicated here.)
+      muted: '#98A2B3',
     },
 
     divider: '#E5E7EB',
+
+    // New from the design-token handoff - additive, no equivalent existed before.
+    designBorder: {
+      input: '#D6DAE3',
+      card: '#E5E8EF',
+      subtle: '#EEF0F4',
+    },
+    designBackground: {
+      page: '#F3F5F9',
+      pageAlt: '#F7F8FB',
+      disabledField: '#F7F8FB',
+    },
+
+    // Status pill color pairs (background/text) - not a standard MUI palette key, access via
+    // theme.palette.statusPill.<name>. Screens with color-coded status chips (Products,
+    // Audit Logs, Tenant Users, etc.) should reference these instead of ad hoc colors, so
+    // status coloring stays consistent across the app.
+    statusPill: {
+      green: { bg: '#E7F6EC', text: '#12794A' },
+      gray: { bg: '#F2F4F7', text: '#475467' },
+      red: { bg: '#FEECEC', text: '#B42318' },
+      indigo: { bg: '#EEF0FB', text: '#2A3A8F' },
+    },
   },
 
   typography: {
@@ -92,8 +122,29 @@ const theme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
-          border: '1px solid #E5E7EB',
+          // #E5E8EF is the design-token handoff's card border - within a hair of the
+          // previous #E5E7EB, treated as the same token consolidated to one value rather
+          // than a meaningful conflict.
+          border: '1px solid #E5E8EF',
+          borderRadius: 12,
           boxShadow: 'none',
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 14,
+        },
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: '#D6DAE3',
+          },
         },
       },
     },

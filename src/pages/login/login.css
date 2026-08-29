@@ -9,8 +9,10 @@
   justify-content: flex-start;
   align-items: flex-start;
   width: 100%;
-  gap: 25px;
-  height: 70vh;
+  gap: 0;
+  /* was height:70vh - a fixed height fought LoginPaper's new auto-sizing (ForgotPassword's
+     post-submit state has much less content than Login's full form) and left dead space
+     inside the card. Content now sizes itself. */
   flex-direction: column;
 }
 
@@ -19,12 +21,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
-  --color: rgba(114, 114, 114, 0.3);
-  background: linear-gradient(to bottom, #daddd8 0%, #daddd8 100%);
-  /* background-image: linear-gradient(0deg, transparent 24%, var(--color) 25%, var(--color) 26%, transparent 27%,transparent 74%, var(--color) 75%, var(--color) 76%, transparent 77%,transparent),
-      linear-gradient(90deg, transparent 24%, var(--color) 25%, var(--color) 26%, transparent 27%,transparent 74%, var(--color) 75%, var(--color) 76%, transparent 77%,transparent);
-  background-size: 55px 55px; */
+  min-height: 100vh;
+  /* Design-handoff gradient: light indigo -> neutral -> soft red, echoing the logo. */
+  background: linear-gradient(135deg, #D6DBF5 0%, #F7F8FB 45%, #F5D8DB 100%);
 }
 
 .login-page .login-logo {
@@ -57,6 +56,30 @@
   color: #f0eff4;
   font-family: "Nanum Gothic", sans-serif;
 }
+.loginBrand {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.loginLogoMark {
+  width: 44px;
+  height: 44px;
+  margin-bottom: 12px;
+}
+.loginWordmark {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1A2233;
+  letter-spacing: -0.2px;
+}
+.loginSubtitle {
+  font-size: 13px;
+  color: #98A2B3;
+  margin-top: 2px;
+}
+
 .fields {
   display: flex;
   justify-content: flex-start;
@@ -64,61 +87,92 @@
   flex-direction: column;
   width: 100%;
   position: relative;
-  gap: 10px;
+  gap: 16px;
 }
 .fields .logo {
-  font-family: "Nanum Gothic", sans-serif;
-  font-weight: 600;
+  font-family: inherit;
+  font-weight: 400;
   font-style: normal;
-  font-size: 15px;
+  font-size: 13px;
   width: 100%;
-  color: #000000;
+  color: #98A2B3;
   text-align: center;
+  margin-top: -8px;
 }
 
 .fields label {
-  font-family: "Nanum Gothic", sans-serif;
-  font-weight: 600;
+  font-family: inherit;
+  font-weight: 400;
   font-style: normal;
-  font-size: 13px;
+  font-size: 12px;
   width: 100%;
-  color: #000000;
+  color: #98A2B3;
+  display: block;
+}
+.fields label input {
+  margin-top: 5px;
 }
 
 .forgotPassword {
+  width: 100%;
+  text-align: right;
   font-size: 13px;
-  margin-top: 2px;
+  font-weight: 600;
+  margin-top: -6px;
   cursor: pointer;
-  color: #000000;
+  color: #2A3A8F;
 }
 .forgotPassword span {
-  color: #000000;
-  text-align: center;
-  font-feature-settings: "clig" off, "liga" off;
-  font-family: "Open Sans";
-  font-size: 14px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
   cursor: pointer;
   font-style: normal;
-  font-weight: 700;
-  line-height: 18px; /* 150% */
+  font-weight: 600;
 }
 .fields input {
   width: 100%;
-  height: 35px;
-  padding: 10px;
-  background: transparent;
-  border: 1px solid rgba(114, 114, 114, 0.3);
-  border-radius: 5px;
-  transition: border 0.5s ease-in-out; /* Smoother transition */
+  box-sizing: border-box;
+  height: 44px;
+  padding: 11px 14px;
+  background: #fff;
+  border: 1px solid #D6DAE3;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  color: #1A2233;
+  transition: border 0.15s ease-in-out;
 }
 
 .fields input:active {
-  border: none;
+  border: 1px solid #D6DAE3;
 }
 
 .fields input:focus {
-  border: 1px solid #98dff5;
+  border: 1px solid #2A3A8F;
   outline: none; /* Remove default focus outline */
+}
+
+.fields input::placeholder {
+  color: #98A2B3;
+}
+
+/* Scoped to .loginBg (Login/ForgotPassword/ResetPassword only) rather than editing the
+   shared, app-wide .custom-button class in app.css directly - that class is used by other
+   screens not yet in scope for this redesign pass, and this task is explicitly one screen
+   at a time. */
+.loginBg .custom-button {
+  height: 44px;
+  border-radius: 8px;
+  background-color: #2A3A8F;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: none;
+}
+.loginBg .custom-button:hover,
+.loginBg .custom-button:active {
+  background-color: #233279;
 }
 
 .view {
@@ -126,8 +180,8 @@
 }
 .view .fa-solid {
   position: absolute;
-  top: 10px;
-  color: #000000;
+  top: 15px;
+  color: #98A2B3;
   right: 15px;
   font-size: 14px;
   cursor: pointer;

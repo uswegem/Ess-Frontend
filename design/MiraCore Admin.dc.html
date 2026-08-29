@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" />
+  <style>body { margin: 0; font-family: 'Roboto', sans-serif; }
+    ::placeholder { color: #98A2B3; }
+  </style>
+</helmet>
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ true }}">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg, #D6DBF5 0%, #F7F8FB 45%, #F5D8DB 100%)">
+    <div style="width:380px;max-width:90vw;background:#fff;border:1px solid #E5E8EF;border-radius:14px;padding:36px 32px;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:28px">
+        <img src="assets/logo.ico" alt="MiraAdmin logo" style="width:44px;height:44px;margin-bottom:12px" />
+        <div style="font-size:20px;font-weight:700;color:#1A2233;letter-spacing:-0.2px">MiraAdmin</div>
+        <div style="font-size:13px;color:#98A2B3;margin-top:2px">Sign in to your admin account</div>
+      </div>
+      <label style="display:block;margin-bottom:16px">
+        <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Email</div>
+        <input type="email" placeholder="name@company.com" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" />
+      </label>
+      <label style="display:block;margin-bottom:8px">
+        <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Password</div>
+        <input type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" />
+      </label>
+      <div style="text-align:right;margin-bottom:20px">
+        <span style="font-size:13px;font-weight:600;color:#2A3A8F;cursor:pointer">Forgot password?</span>
+      </div>
+      <button onClick="{{ goToApp }}" style="width:100%;height:44px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Sign in</button>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;min-height:100vh;background:#F7F8FB">
+
+  <div style="width:232px;flex-shrink:0;background:#fff;border-right:1px solid #EEF0F4;display:flex;flex-direction:column">
+    <div style="padding:22px 24px;font-size:19px;font-weight:700;color:#1A2233;letter-spacing:-0.2px">MiraCore</div>
+    <div style="flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:16px;overflow-y:auto">
+      <sc-for list="{{ navItems }}" as="group" hint-placeholder-count="4">
+        <div>
+          <div style="padding:6px 12px 4px;font-size:11px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.05em">{{ group.section }}</div>
+          <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="3">
+            <div onClick="{{ item.onClick }}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;background:{{ item.active }};color:{{ item.color }}" style-hover="background:#F7F8FB">
+              <span style="width:18px;text-align:center;font-size:14px">{{ item.icon }}</span>
+              {{ item.label }}
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+
+    <div style="height:64px;flex-shrink:0;background:#fff;border-bottom:1px solid #EEF0F4;display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:0 28px">
+      <div style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;border:1px solid #E5E8EF;font-size:13px;font-weight:600;color:#344054;cursor:pointer">
+        ZE DONE <span style="font-size:10px;color:#98A2B3">&#9660;</span>
+      </div>
+      <div style="width:34px;height:34px;border-radius:50%;background:#2A3A8F;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">SA</div>
+      <span onClick="{{ logOut }}" style="font-size:13px;font-weight:600;color:#98A2B3;cursor:pointer">Log out</span>
+    </div>
+
+    <div style="padding:32px 40px;flex:1">
+
+      <sc-if value="{{ isProducts }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px">
+          <div>
+            <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px">Product Management</div>
+            <div style="font-size:14px;color:#6B7280;margin-top:4px">Manage product catalog, update product details, and control availability.</div>
+          </div>
+          <div style="display:flex;gap:12px">
+            <button style="display:flex;align-items:center;gap:8px;padding:0 16px;height:40px;border-radius:8px;border:1px solid #D6DAE3;background:#fff;color:#344054;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#F7F8FB"><span style="font-size:15px">&#9638;</span> Columns</button>
+            <button style="display:flex;align-items:center;gap:8px;padding:0 18px;height:40px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;box-shadow:0 1px 2px rgba(16,24,40,0.08)" style-hover="background:#233279"><span style="font-size:16px">+</span> Add Product</button>
+          </div>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="background:#FAFBFC;border-bottom:1px solid #E5E8EF">
+                  <th style="width:40px;padding:12px 8px 12px 16px;text-align:left"><input type="checkbox" style="width:16px;height:16px;cursor:pointer" /></th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Product Code</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Product Name</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Status</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Deduction Code</th>
+                  <th style="padding:12px 16px;text-align:right;font-size:13px;font-weight:600;color:#475467">Interest Rate (%)</th>
+                  <th style="padding:12px 16px;text-align:right;font-size:13px;font-weight:600;color:#475467">Processing Fee (%)</th>
+                  <th style="padding:12px 16px;text-align:right;font-size:13px;font-weight:600;color:#475467">Insurance (%)</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Other Charges</th>
+                  <th style="padding:12px 16px;text-align:center;font-size:13px;font-weight:600;color:#475467">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <sc-for list="{{ rows }}" as="row" hint-placeholder-count="3">
+                  <tr style="background:{{ row.stripe }};border-bottom:1px solid #F0F1F5" style-hover="background:#F7F8FB">
+                    <td style="padding:12px 8px 12px 16px"><input type="checkbox" style="width:16px;height:16px;cursor:pointer" /></td>
+                    <td style="padding:12px 16px;font-size:14px;font-weight:500;color:#1A2233">{{ row.code }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#1A2233">{{ row.name }}</td>
+                    <td style="padding:12px 16px"><span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:12px;font-weight:600;background:{{ row.statusBg }};color:{{ row.statusColor }}">{{ row.status }}</span></td>
+                    <td style="padding:12px 16px;font-size:14px;color:#475467;font-family:monospace">{{ row.deductionCode }}</td>
+                    <td style="padding:12px 16px;text-align:right;font-size:14px;color:#1A2233;font-variant-numeric:tabular-nums">{{ row.interestRate }}</td>
+                    <td style="padding:12px 16px;text-align:right;font-size:14px;color:#1A2233;font-variant-numeric:tabular-nums">{{ row.processingFee }}</td>
+                    <td style="padding:12px 16px;text-align:right;font-size:14px;color:#1A2233;font-variant-numeric:tabular-nums">{{ row.insurance }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#98A2B3">{{ row.otherCharges }}</td>
+                    <td style="padding:12px 16px">
+                      <div style="display:flex;gap:4px;justify-content:center">
+                        <button title="View details" onClick="{{ openModal }}" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;color:#667085;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:#F0F1F5">&#128065;</button>
+                        <button title="Deactivate" style="width:30px;height:30px;border-radius:6px;border:none;background:transparent;color:#D92D20;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:#FEECEC">&#9211;</button>
+                      </div>
+                    </td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px;margin-bottom:24px">FSP Onboarding</div>
+        <div style="display:flex;align-items:center;margin-bottom:28px">
+          <sc-for list="{{ steps }}" as="step" hint-placeholder-count="5">
+            <sc-if value="{{ step.hasConnector }}" hint-placeholder-val="{{ true }}">
+              <div style="flex:1;height:2px;background:{{ step.connectorColor }};margin:0 8px"></div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+              <div style="width:28px;height:28px;border-radius:50%;background:{{ step.circleBg }};color:{{ step.circleColor }};font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center">{{ step.num }}</div>
+              <span style="font-size:14px;font-weight:600;color:{{ step.labelColor }};white-space:nowrap">{{ step.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;padding:28px;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:14px">Organization Details</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:14px;margin-bottom:16px;align-items:end">
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">FSP Name</div><input placeholder="e.g. Wezesha Finance" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">FSP Code</div><input placeholder="e.g. FL8090" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+            <button style="height:42px;padding:0 18px;border-radius:8px;border:1px solid #2A3A8F;background:#fff;color:#2A3A8F;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;white-space:nowrap" style-hover="background:#F0F2FA">Check availability</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:24px">
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Contact Email</div><input placeholder="name@company.com" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Contact Person</div><input placeholder="Full name" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Contact Phone</div><input placeholder="+255 ..." style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+          </div>
+          <div style="height:1px;background:#EEF0F4;margin-bottom:20px"></div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:14px">Address</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <label style="display:block">
+              <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Country</div>
+              <select value="{{ country }}" onChange="{{ onCountryChange }}" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:#fff">
+                <option value="">Select country</option>
+                <sc-for list="{{ countryOptions }}" as="c" hint-placeholder-count="3"><option value="{{ c }}">{{ c }}</option></sc-for>
+              </select>
+            </label>
+            <label style="display:block">
+              <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Region / City</div>
+              <select value="{{ region }}" onChange="{{ onRegionChange }}" disabled="{{ regionDisabled }}" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:{{ regionBg }}">
+                <option value="">Select region</option>
+                <sc-for list="{{ regionOptions }}" as="r" hint-placeholder-count="3"><option value="{{ r }}">{{ r }}</option></sc-for>
+              </select>
+            </label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+            <label style="display:block">
+              <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">District</div>
+              <select value="{{ district }}" onChange="{{ onDistrictChange }}" disabled="{{ districtDisabled }}" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:{{ districtBg }}">
+                <option value="">Select district</option>
+                <sc-for list="{{ districtOptions }}" as="d" hint-placeholder-count="3"><option value="{{ d }}">{{ d }}</option></sc-for>
+              </select>
+            </label>
+            <label style="display:block">
+              <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Ward</div>
+              <select value="{{ ward }}" onChange="{{ onWardChange }}" disabled="{{ wardDisabled }}" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:{{ wardBg }}">
+                <option value="">Select ward</option>
+                <sc-for list="{{ wardOptions }}" as="w" hint-placeholder-count="3"><option value="{{ w }}">{{ w }}</option></sc-for>
+              </select>
+            </label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Post Code</div><input value="{{ postCode }}" disabled placeholder="Auto-filled from ward" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #EAECF0;background:#F7F8FB;font-size:14px;font-family:inherit;color:#475467" /></label>
+          </div>
+          <div style="height:1px;background:#EEF0F4;margin-bottom:20px"></div>
+          <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Address Line 1</div><input placeholder="Street, building, floor" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px">
+          <span style="font-size:14px;font-weight:600;color:#C0C5D0">Back</span>
+          <button style="padding:0 24px;height:42px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Next</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isTenants }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px">
+          <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px">FSP Tenants</div>
+          <div style="display:flex;gap:12px;align-items:center">
+            <label style="display:block">
+              <select value="{{ tenantsFilter }}" onChange="{{ onTenantsFilterChange }}" style="padding:9px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:#fff">
+                <option value="submitted">Status: Submitted</option>
+                <option value="approved">Status: Approved</option>
+                <option value="rejected">Status: Rejected</option>
+              </select>
+            </label>
+            <button style="padding:0 18px;height:38px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">New FSP</button>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#FAFBFC;border-bottom:1px solid #E5E8EF">
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">ID</th>
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Name</th>
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">FSP Code</th>
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Status</th>
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Email</th>
+                <th style="padding:12px 16px;text-align:center;font-size:13px;font-weight:600;color:#475467">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="6" style="padding:56px 16px;text-align:center">
+                <div style="font-size:24px;margin-bottom:8px">&#128193;</div>
+                <div style="font-size:14px;color:#98A2B3">No FSPs match this filter</div>
+              </td></tr>
+            </tbody>
+          </table>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 16px;border-top:1px solid #EEF0F4;font-size:13px;color:#667085">
+            <span>Rows per page: 100</span>
+            <span>0\u20130 of 0</span>
+            <span style="display:flex;gap:4px">
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8249;</span>
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8250;</span>
+            </span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isUsers }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:16px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px">Tenant Users</div>
+            <button style="display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid #D6DAE3;background:#fff;color:#344054;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer" style-hover="background:#F7F8FB"><span style="font-size:13px">&#9432;</span> Roles &amp; permissions</button>
+          </div>
+          <button style="padding:0 18px;height:38px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Invite User</button>
+        </div>
+        <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#FAFBFC;border-bottom:1px solid #E5E8EF">
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Name</th>
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Email</th>
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Role</th>
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Active</th>
+                <th style="padding:12px 16px;text-align:right;font-size:13px;font-weight:600;color:#475467">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #F0F1F5">
+                <td style="padding:12px 16px;font-size:14px;color:#1A2233;font-weight:500">System Super Administrator</td>
+                <td style="padding:12px 16px;font-size:14px;color:#475467">superadmin@emkopo.tz</td>
+                <td style="padding:12px 16px"><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#EEF0FB;color:#2A3A8F">finance_officer</span></td>
+                <td style="padding:12px 16px"><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#E7F6EC;color:#12794A">Yes</span></td>
+                <td style="padding:12px 16px">
+                  <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px">
+                    <select style="padding:7px 10px;border-radius:8px;border:1px solid #D6DAE3;font-size:13px;font-family:inherit;color:#1A2233;background:#fff"><option>finance_officer</option><option>admin</option><option>viewer</option></select>
+                    <span style="font-size:13px;font-weight:600;color:#D92D20;cursor:pointer">Deactivate</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 16px;border-top:1px solid #EEF0F4;font-size:13px;color:#667085">
+            <span>Rows per page: 100</span>
+            <span>1\u20131 of 1</span>
+            <span style="display:flex;gap:4px">
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8249;</span>
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8250;</span>
+            </span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px;margin-bottom:20px">FSP Settings</div>
+        <label style="display:block;margin-bottom:20px">
+          <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Tenant</div>
+          <select style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:#fff"><option>Legacy ZE DONE Tenant (legacy-zedone)</option></select>
+        </label>
+        <div style="display:flex;gap:24px;border-bottom:1px solid #EEF0F4;margin-bottom:24px">
+          <sc-for list="{{ settingsTabs }}" as="tab" hint-placeholder-count="4">
+            <div onClick="{{ tab.onClick }}" style="padding-bottom:10px;font-size:14px;font-weight:600;color:{{ tab.color }};border-bottom:2px solid {{ tab.borderColor }};cursor:pointer">{{ tab.label }}</div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ isSettingsProfile }}" hint-placeholder-val="{{ true }}">
+          <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;padding:28px;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+            <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:14px">Profile Details</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-bottom:24px">
+              <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Tenant Name</div><input value="Legacy ZE DONE Tenant" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+              <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">FSP Code</div><input value="FL8090" disabled style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #EAECF0;background:#F7F8FB;font-size:14px;font-family:inherit;color:#98A2B3" /></label>
+              <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Contact Email</div><input value="migration@miracore.local" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+              <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Contact Person</div><input value="System Migration" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+              <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Phone</div><input value="+255000000000" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+            </div>
+
+            <div style="height:1px;background:#EEF0F4;margin-bottom:20px"></div>
+            <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:14px">Subscription</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:16px;margin-bottom:24px">
+              <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Plan</div><select style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:#fff"><option>Standard</option><option>Pro</option><option>Enterprise</option></select></label>
+              <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Monthly transaction limit</div><input value="10000" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" /></label>
+            </div>
+            <div style="display:flex;justify-content:flex-end">
+              <button style="padding:0 22px;height:40px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Save</button>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isSettingsMifos }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(16,24,40,0.04);max-width:520px">
+            <label style="display:block;margin-bottom:20px">
+              <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Mode</div>
+              <select style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:#fff"><option>Inherit default</option><option>Custom endpoint</option></select>
+            </label>
+            <div style="display:flex;gap:12px">
+              <button style="padding:0 20px;height:40px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Save</button>
+              <button style="padding:0 20px;height:40px;border-radius:8px;border:1px solid #D6DAE3;background:#fff;color:#2A3A8F;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#F7F8FB">Validate</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isSettingsApiKeys }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:12px;align-items:end;margin-bottom:16px">
+            <label style="display:block">
+              <div style="font-size:12px;color:#98A2B3;margin-bottom:5px">Key name</div>
+              <input value="Production" style="box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;width:220px" />
+            </label>
+            <button style="padding:0 20px;height:40px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Create Key</button>
+          </div>
+          <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+            <table style="width:100%;border-collapse:collapse">
+              <thead>
+                <tr style="background:#FAFBFC;border-bottom:1px solid #E5E8EF">
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Name</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Prefix</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Status</th>
+                  <th style="padding:12px 16px;text-align:center;font-size:13px;font-weight:600;color:#475467">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" style="padding:56px 16px;text-align:center"><div style="font-size:14px;color:#98A2B3">No rows</div></td></tr>
+              </tbody>
+            </table>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 16px;border-top:1px solid #EEF0F4;font-size:13px;color:#667085">
+              <span>Rows per page: 100</span>
+              <span>0\u20130 of 0</span>
+              <span style="display:flex;gap:4px">
+                <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8249;</span>
+                <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8250;</span>
+              </span>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isSettingsCertificates }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(16,24,40,0.04);max-width:520px">
+            <div style="font-size:13px;font-weight:600;color:#1A2233;margin-bottom:16px">Upload ESS signing certificates (PEM format)</div>
+            <button style="width:100%;height:42px;border-radius:8px;border:1px solid #D6DAE3;background:#fff;color:#2A3A8F;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;margin-bottom:10px" style-hover="background:#F7F8FB">Public cert</button>
+            <button style="width:100%;height:42px;border-radius:8px;border:1px solid #D6DAE3;background:#fff;color:#2A3A8F;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;margin-bottom:10px" style-hover="background:#F7F8FB">Private key</button>
+            <button style="width:100%;height:42px;border-radius:8px;border:1px solid #D6DAE3;background:#fff;color:#2A3A8F;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer;margin-bottom:16px" style-hover="background:#F7F8FB">CA cert (optional)</button>
+            <button disabled style="width:100%;height:42px;border-radius:8px;border:none;background:#E5E8EF;color:#98A2B3;font-weight:600;font-size:14px;font-family:inherit;cursor:not-allowed">Upload</button>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isTrigger }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px">Trigger Message</div>
+        <div style="font-size:14px;color:#6B7280;margin-top:4px;margin-bottom:24px">Manually send an outgoing message to ESS Utumishi for a specific loan.</div>
+
+        <div style="position:relative;margin-bottom:24px">
+          <span style="position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#98A2B3;font-size:14px">&#128269;</span>
+          <input placeholder="Search loans, applications..." style="width:100%;box-sizing:border-box;padding:12px 100px 12px 48px;border-radius:10px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" />
+          <button style="position:absolute;right:6px;top:6px;bottom:6px;padding:0 16px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Search</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1.3fr;gap:20px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:20px">
+            <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+              <div style="font-size:14px;font-weight:700;color:#1A2233;margin-bottom:14px">Loan Lookup</div>
+              <select style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#98A2B3;background:#fff;margin-bottom:14px"><option>Search by application number, name or check number</option></select>
+              <button style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;height:42px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279"><span style="font-size:13px">&#128269;</span> Search</button>
+            </div>
+            <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+              <div style="font-size:14px;font-weight:700;color:#1A2233;margin-bottom:6px">&#128337; History</div>
+              <div style="font-size:13px;color:#98A2B3">Select a loan to see history</div>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+            <div style="font-size:14px;font-weight:700;color:#1A2233;margin-bottom:14px">Message Composer</div>
+            <select value="{{ triggerType }}" onChange="{{ onTriggerTypeChange }}" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:#fff;margin-bottom:14px">
+              <option value="">Select Message Type</option>
+              <option value="reminder">Payment Reminder</option>
+              <option value="overdue">Overdue Notice</option>
+              <option value="approval">Approval Notice</option>
+            </select>
+            <sc-if value="{{ triggerTypeEmpty }}" hint-placeholder-val="{{ true }}">
+              <div style="border:1px dashed #D6DAE3;border-radius:10px;padding:40px 24px;text-align:center">
+                <div style="font-size:20px;color:#C0C5D0;margin-bottom:10px">&#10148;</div>
+                <div style="font-size:14px;font-weight:600;color:#475467;margin-bottom:4px">Select a message type to begin</div>
+                <div style="font-size:13px;color:#98A2B3">Choose from the dropdown above or click a suggested message</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ triggerTypeChosen }}" hint-placeholder-val="{{ false }}">
+              <textarea rows="6" placeholder="Message preview will appear here..." style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;resize:vertical"></textarea>
+              <div style="display:flex;justify-content:flex-end;margin-top:14px">
+                <button style="padding:0 20px;height:38px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Send Message</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isAudit }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px;margin-bottom:20px">Audit Logs</div>
+        <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;padding:16px 20px;box-shadow:0 1px 3px rgba(16,24,40,0.04);margin-bottom:16px;display:flex;gap:14px">
+          <input placeholder="Filter by action" style="flex:1;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233" />
+          <label style="display:block;min-width:180px">
+            <select style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid #D6DAE3;font-size:14px;font-family:inherit;color:#1A2233;background:#fff"><option>Status: Success</option><option>Status: Failed</option><option>Status: All</option></select>
+          </label>
+        </div>
+        <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#FAFBFC;border-bottom:1px solid #E5E8EF">
+                <th style="width:150px;padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Action</th>
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Description</th>
+                <th style="width:110px;padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Status</th>
+                <th style="width:190px;padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{ auditRows }}" as="log" hint-placeholder-count="6">
+                <tr style="background:{{ log.stripe }};border-bottom:1px solid #F0F1F5" style-hover="background:#F7F8FB">
+                  <td style="padding:12px 16px;font-size:13px;color:#475467;font-family:monospace">{{ log.action }}</td>
+                  <td style="padding:12px 16px;font-size:14px;color:#1A2233">{{ log.description }}</td>
+                  <td style="padding:12px 16px"><span style="display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:#E7F6EC;color:#12794A">{{ log.status }}</span></td>
+                  <td style="padding:12px 16px;font-size:13px;color:#667085">{{ log.time }}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 16px;border-top:1px solid #EEF0F4;font-size:13px;color:#667085">
+            <span>Rows per page: 100</span>
+            <span>1\u201350 of 50</span>
+            <span style="display:flex;gap:4px">
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8249;</span>
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#98A2B3;cursor:pointer">&#8250;</span>
+            </span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isNotifications }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px;margin-bottom:20px">Notifications</div>
+        <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#FAFBFC;border-bottom:1px solid #E5E8EF">
+                <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Message</th>
+                <th style="width:110px;padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Status</th>
+                <th style="width:170px;padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Created</th>
+                <th style="width:90px;padding:12px 16px;text-align:center;font-size:13px;font-weight:600;color:#475467">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4" style="padding:56px 16px;text-align:center">
+                <div style="font-size:24px;margin-bottom:8px">&#128276;</div>
+                <div style="font-size:14px;color:#98A2B3">No rows</div>
+              </td></tr>
+            </tbody>
+          </table>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 16px;border-top:1px solid #EEF0F4;font-size:13px;color:#667085">
+            <span>Rows per page: 100</span>
+            <span>0\u20130 of 0</span>
+            <span style="display:flex;gap:4px">
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8249;</span>
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8250;</span>
+            </span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoans }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px">
+          <div>
+            <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px">Loan Management</div>
+            <div style="font-size:14px;color:#6B7280;margin-top:4px">Tenant-scoped loan mappings linked to ESS applications and MIFOS.</div>
+          </div>
+          <button title="Refresh" style="width:36px;height:36px;border-radius:8px;border:1px solid #D6DAE3;background:#fff;color:#475467;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:#F7F8FB">&#8635;</button>
+        </div>
+        <div style="background:#fff;border:1px solid #E5E8EF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,0.04)">
+          <div style="overflow-x:auto">
+            <table style="width:100%;min-width:1000px;border-collapse:collapse">
+              <thead>
+                <tr style="background:#FAFBFC;border-bottom:1px solid #E5E8EF">
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Application #</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">MIFOS Account</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Product</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Client</th>
+                  <th style="padding:12px 16px;text-align:right;font-size:13px;font-weight:600;color:#475467">Amount</th>
+                  <th style="padding:12px 16px;text-align:right;font-size:13px;font-weight:600;color:#475467">Tenure (mo)</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Status</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">Created</th>
+                  <th style="padding:12px 16px;text-align:left;font-size:13px;font-weight:600;color:#475467">MIFOS Loan ID</th>
+                  <th style="padding:12px 16px;text-align:center;font-size:13px;font-weight:600;color:#475467">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="10" style="padding:56px 16px;text-align:center">
+                  <div style="font-size:24px;margin-bottom:8px">&#128179;</div>
+                  <div style="font-size:14px;color:#98A2B3">No rows</div>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 16px;border-top:1px solid #EEF0F4;font-size:13px;color:#667085">
+            <span>Rows per page: 100</span>
+            <span>0\u20130 of 0</span>
+            <span style="display:flex;gap:4px">
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8249;</span>
+              <span style="width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#D0D5DD">&#8250;</span>
+            </span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOther }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:22px;font-weight:700;color:#1A2233;letter-spacing:-0.2px;margin-bottom:8px">{{ otherLabel }}</div>
+        <div style="font-size:14px;color:#6B7280;margin-bottom:24px">This screen hasn't been redesigned yet.</div>
+        <div style="background:#fff;border:1px dashed #D6DAE3;border-radius:12px;padding:72px;text-align:center">
+          <div style="font-size:14px;color:#98A2B3">Coming soon</div>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(16,24,40,0.45);display:flex;align-items:center;justify-content:center;z-index:1000" onClick="{{ closeModal }}">
+      <div style="background:#fff;border-radius:14px;width:560px;max-width:92vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 40px rgba(16,24,40,0.2)" onClick="{{ stopProp }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #EEF0F4">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:17px;font-weight:700;color:#1A2233">{{ product.name }}</span>
+            <span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:12px;font-weight:600;background:{{ product.statusBg }};color:{{ product.statusColor }}">{{ product.status }}</span>
+          </div>
+          <button onClick="{{ closeModal }}" style="width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:#98A2B3;font-size:16px;cursor:pointer" style-hover="background:#F0F1F5">&#10005;</button>
+        </div>
+        <div style="overflow-y:auto;padding:20px 24px;flex:1">
+          <div style="background:#F7F8FB;border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.5;color:#475467;margin-bottom:20px">{{ product.description }}</div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Identifiers</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:20px">
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Product Code</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.code }}</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Deduction Code</div><div style="font-size:14px;color:#1A2233;font-weight:500;font-family:monospace">{{ product.deductionCode }}</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Terms &amp; Pricing</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:20px">
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Min Tenure</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.minTenure }} mo</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Max Tenure</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.maxTenure }} mo</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Interest Rate</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.interestRate }}%</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Processing Fee</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.processingFee }}%</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Insurance</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.insurance }}%</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Insurance Type</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.insuranceType }}</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Repayment Type</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.repaymentType }}</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Other Charges</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.otherCharges }}</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Amount Limits</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-bottom:20px">
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Min Amount</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.minAmount }}</div></div>
+            <div><div style="font-size:12px;color:#98A2B3;margin-bottom:2px">Max Amount</div><div style="font-size:14px;color:#1A2233;font-weight:500">{{ product.maxAmount }}</div></div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Eligibility</div>
+          <div style="display:flex;gap:20px">
+            <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px;color:#98A2B3">For Executive</span><span style="font-size:13px;font-weight:600;color:#475467">{{ product.forExecutive }}</span></div>
+            <div style="display:flex;align-items:center;gap:6px"><span style="font-size:13px;color:#98A2B3">Sharia Facility</span><span style="font-size:13px;font-weight:600;color:#475467">{{ product.shariaFacility }}</span></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:16px 24px;border-top:1px solid #EEF0F4">
+          <button onClick="{{ closeModal }}" style="padding:0 16px;height:38px;border-radius:8px;border:none;background:transparent;color:#2A3A8F;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#F0F1F5">Close</button>
+          <button onClick="{{ openEdit }}" style="padding:0 16px;height:38px;border-radius:8px;border:1px solid #D6DAE3;background:#fff;color:#344054;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#F7F8FB">Edit</button>
+          <button style="padding:0 18px;height:38px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Submit</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ editModalOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(16,24,40,0.45);display:flex;align-items:center;justify-content:center;z-index:1000" onClick="{{ closeEdit }}">
+      <div style="background:#fff;border-radius:14px;width:640px;max-width:92vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 40px rgba(16,24,40,0.2)" onClick="{{ stopProp }}">
+        <div style="padding:20px 24px;border-bottom:1px solid #EEF0F4">
+          <div style="font-size:17px;font-weight:700;color:#1A2233">Edit Product</div>
+          <div style="font-size:13px;color:#6B7280;margin-top:2px">{{ product.name }}</div>
+        </div>
+        <div style="overflow-y:auto;padding:20px 24px;flex:1">
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Tenant</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">FSP Code</div><input value="FL8090" disabled style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #EAECF0;background:#F7F8FB;color:#98A2B3;font-size:14px;font-family:inherit" /><div style="font-size:11px;color:#98A2B3;margin-top:4px">From active tenant</div></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">FSP Name</div><input value="ZE DONE" disabled style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #EAECF0;background:#F7F8FB;color:#98A2B3;font-size:14px;font-family:inherit" /><div style="font-size:11px;color:#98A2B3;margin-top:4px">From active tenant</div></label>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Identifiers</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Product Code</div><input value="17" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Deduction Code</div><input value="FL8090" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block;grid-column:1 / -1"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Product Name</div><input value="Wezesha Loan" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block;grid-column:1 / -1"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">MIFOS Product ID</div><input value="17" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /><div style="font-size:11px;color:#98A2B3;margin-top:4px">Fineract loan product ID (e.g. 17)</div></label>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Description</div>
+          <div style="margin-bottom:22px"><textarea rows="3" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit;resize:vertical">Wezesha Loan helps you move forward with confidence \u2014 accessible financing for your personal and business needs, with repayment terms designed around your ability to pay</textarea></div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Terms &amp; Pricing</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px">
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Min Tenure</div><input value="3" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Max Tenure</div><input value="36" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Interest Rate (%)</div><input value="28" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Processing Fee (%)</div><input value="2" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Insurance (%)</div><input value="0.55" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#98A2B3;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px">Amounts</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Min Amount</div><input value="100,000" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Max Amount</div><input value="15,000,000" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+            <label style="display:block;grid-column:1 / -1"><div style="font-size:12px;color:#98A2B3;margin-bottom:4px">Other Charges (TZS)</div><input value="0" style="width:100%;box-sizing:border-box;padding:9px 12px;border-radius:8px;border:1px solid #D6DAE3;color:#1A2233;font-size:14px;font-family:inherit" /></label>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:12px;padding:16px 24px;border-top:1px solid #EEF0F4">
+          <button onClick="{{ closeEdit }}" style="padding:0 16px;height:38px;border-radius:8px;border:none;background:transparent;color:#2A3A8F;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#F0F1F5">Cancel</button>
+          <button style="padding:0 16px;height:38px;border-radius:8px;border:1px solid #D6DAE3;background:#fff;color:#344054;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#F7F8FB">Save Draft</button>
+          <button style="padding:0 18px;height:38px;border-radius:8px;border:none;background:#2A3A8F;color:#fff;font-weight:600;font-size:14px;font-family:inherit;cursor:pointer" style-hover="background:#233279">Save</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const GEO = {
+  Tanzania: {
+    'Dar es Salaam': { Ilala: { Kariakoo: '11101', Upanga: '11102' }, Kinondoni: { Mikocheni: '14112', Msasani: '14113' }, Temeke: { 'Chang\u2019ombe': '15101', Mbagala: '15102' } },
+    Arusha: { 'Arusha City': { Kaloleni: '23107', Sekei: '23108' }, Meru: { 'Usa River': '23201', Poli: '23202' } },
+    Dodoma: { 'Dodoma Urban': { Viwandani: '41101', Miyuji: '41102' }, Chamwino: { Mvumi: '41201', Chamwino: '41202' } },
+  },
+};
+
+class Component extends DCLogic {
+  state = {
+    view: 'login',
+    page: 'products', modalOpen: false, editModalOpen: false,
+    country: '', region: '', district: '', ward: '',
+    tenantsFilter: 'submitted', settingsTab: 'Profile', triggerType: '',
+  };
+
+  navigate = (key) => () => this.setState({ page: key });
+  goToApp = () => this.setState({ view: 'app' });
+  logOut = () => this.setState({ view: 'login' });
+  onCountryChange = (e) => this.setState({ country: e.target.value, region: '', district: '', ward: '' });
+  onRegionChange = (e) => this.setState({ region: e.target.value, district: '', ward: '' });
+  onDistrictChange = (e) => this.setState({ district: e.target.value, ward: '' });
+  onWardChange = (e) => this.setState({ ward: e.target.value });
+  onTenantsFilterChange = (e) => this.setState({ tenantsFilter: e.target.value });
+  onTriggerTypeChange = (e) => this.setState({ triggerType: e.target.value });
+  setSettingsTab = (tab) => () => this.setState({ settingsTab: tab });
+
+  renderVals() {
+    const { page, country, region, district, ward, settingsTab, triggerType } = this.state;
+    const regions = GEO[country] || {};
+    const districts = regions[region] || {};
+    const wards = districts[district] || {};
+    const postCode = wards[ward] || '';
+
+    const navGroups = [
+      { section: 'Overview', items: [['\u25A4', 'Dashboard', 'dashboard']] },
+      { section: 'Operations', items: [
+        ['\u2302', 'FSP Tenants', 'tenants'], ['\u21C4', 'Onboarding', 'onboarding'], ['\u{1F6D2}', 'Products', 'products'],
+        ['\u25C8', 'Loans', 'loans'], ['\u25CE', 'Users', 'users'],
+      ] },
+      { section: 'Communications', items: [
+        ['\u2709', 'Messages', 'messages'], ['\u26A1', 'Trigger Message', 'trigger'], ['\u25B2', 'Notifications', 'notifications'],
+      ] },
+      { section: 'System', items: [['\u2699', 'Settings', 'settings'], ['\u21BB', 'Audit', 'audit']] },
+    ];
+    const navItems = navGroups.map(g => ({
+      section: g.section,
+      items: g.items.map(([icon, label, key]) => ({
+        icon, label,
+        onClick: this.navigate(key),
+        active: page === key ? '#EEF0FB' : 'transparent',
+        color: page === key ? '#2A3A8F' : '#475467',
+      })),
+    }));
+
+    const stepLabels = ['Organization', 'MIFOS Config', 'API Keys & Certificates', 'Review', 'Submit'];
+    const currentStep = 1;
+    const steps = stepLabels.map((label, i) => {
+      const num = i + 1;
+      const isDone = num < currentStep, isActive = num === currentStep;
+      return {
+        num, label, hasConnector: i > 0,
+        connectorColor: num <= currentStep ? '#2A3A8F' : '#E5E8EF',
+        circleBg: isActive || isDone ? '#2A3A8F' : '#EEF0F4',
+        circleColor: isActive || isDone ? '#fff' : '#98A2B3',
+        labelColor: isActive ? '#1A2233' : '#98A2B3',
+      };
+    });
+
+    const rows = [
+      { code: 17, name: 'Wezesha Loan', status: 'Submitted', statusBg: '#E7F6EC', statusColor: '#12794A', deductionCode: 'FL8090', interestRate: '28', processingFee: '2', insurance: '0.55', otherCharges: '\u2014', stripe: '#fff' },
+      { code: 18, name: 'Biashara Loan', status: 'Draft', statusBg: '#F2F4F7', statusColor: '#475467', deductionCode: 'FL8112', interestRate: '22', processingFee: '1.5', insurance: '0.40', otherCharges: '\u2014', stripe: '#FAFBFC' },
+      { code: 19, name: 'Elimu Loan', status: 'Rejected', statusBg: '#FEECEC', statusColor: '#B42318', deductionCode: 'FL8140', interestRate: '19', processingFee: '2.5', insurance: '0.60', otherCharges: '\u2014', stripe: '#fff' },
+    ];
+    const product = {
+      name: 'Wezesha Loan', status: 'Submitted', statusBg: '#E7F6EC', statusColor: '#12794A',
+      code: 17, deductionCode: 'FL8090',
+      description: 'Wezesha Loan helps you move forward with confidence \u2014 accessible financing for your personal and business needs, with repayment terms designed around your ability to pay.',
+      minTenure: 3, maxTenure: 36, interestRate: 28, processingFee: 2, insurance: 0.55,
+      maxAmount: 'TZS 15,000,000', minAmount: 'TZS 100,000', repaymentType: 'Reducing',
+      insuranceType: 'DISTRIBUTED', otherCharges: 'TZS 0', forExecutive: 'No', shariaFacility: 'No',
+    };
+
+    const knownPages = ['products', 'onboarding', 'tenants', 'users', 'settings', 'trigger', 'audit', 'notifications', 'loans'];
+    const otherLabels = { dashboard: 'Dashboard', messages: 'Messages' };
+
+    const auditLogsRaw = [
+      ['api_call', 'API access: GET /api/v1/audit/logs', '8/7/2026, 10:00:20 AM'],
+      ['system_event', 'user performed GET on /logs', '8/7/2026, 10:00:12 AM'],
+      ['api_call', 'API access: GET /api/v1/audit/logs', '8/7/2026, 10:00:11 AM'],
+      ['system_event', 'user performed GET on /', '8/7/2026, 9:58:38 AM'],
+      ['api_call', 'API access: GET /api/v1/tenants', '8/7/2026, 9:58:38 AM'],
+      ['system_event', 'user performed GET on /legacy-zedone/users', '8/7/2026, 9:56:17 AM'],
+      ['api_call', 'API access: GET /api/v1/tenants/legacy-zedone/users', '8/7/2026, 9:56:16 AM'],
+      ['system_event', 'user performed GET on /loan/list-employee-loan', '8/7/2026, 9:53:51 AM'],
+    ];
+    const auditRows = auditLogsRaw.map(([action, description, time], i) => ({ action, description, time, status: 'success', stripe: i % 2 ? '#FAFBFC' : '#fff' }));
+
+    const settingsTabsList = ['Profile', 'MIFOS', 'API Keys', 'Certificates'];
+
+    return {
+      isLogin: this.state.view === 'login', isApp: this.state.view === 'app',
+      goToApp: this.goToApp, logOut: this.logOut,
+      navItems, steps, rows, product,
+      isProducts: page === 'products', isOnboarding: page === 'onboarding',
+      isTenants: page === 'tenants', isUsers: page === 'users',
+      isSettings: page === 'settings', isTrigger: page === 'trigger',
+      isAudit: page === 'audit', auditRows,
+      isNotifications: page === 'notifications', isLoans: page === 'loans',
+      isOther: !knownPages.includes(page),
+      otherLabel: otherLabels[page] || '',
+
+      modalOpen: this.state.modalOpen, editModalOpen: this.state.editModalOpen,
+      openModal: () => this.setState({ modalOpen: true }),
+      closeModal: () => this.setState({ modalOpen: false }),
+      openEdit: () => this.setState({ modalOpen: false, editModalOpen: true }),
+      closeEdit: () => this.setState({ editModalOpen: false }),
+      stopProp: (e) => e.stopPropagation(),
+
+      countryOptions: Object.keys(GEO), country, region, district, ward, postCode,
+      regionOptions: Object.keys(regions), districtOptions: Object.keys(districts), wardOptions: Object.keys(wards),
+      regionDisabled: !country, districtDisabled: !region, wardDisabled: !district,
+      regionBg: country ? '#fff' : '#F7F8FB', districtBg: region ? '#fff' : '#F7F8FB', wardBg: district ? '#fff' : '#F7F8FB',
+      onCountryChange: this.onCountryChange, onRegionChange: this.onRegionChange,
+      onDistrictChange: this.onDistrictChange, onWardChange: this.onWardChange,
+
+      tenantsFilter: this.state.tenantsFilter, onTenantsFilterChange: this.onTenantsFilterChange,
+
+      settingsTab, isSettingsProfile: settingsTab === 'Profile',
+      isSettingsMifos: settingsTab === 'MIFOS', isSettingsApiKeys: settingsTab === 'API Keys',
+      isSettingsCertificates: settingsTab === 'Certificates',
+      settingsTabs: settingsTabsList.map(t => ({
+        label: t, onClick: this.setSettingsTab(t),
+        color: settingsTab === t ? '#2A3A8F' : '#667085',
+        borderColor: settingsTab === t ? '#2A3A8F' : 'transparent',
+      })),
+
+      triggerType, triggerTypeEmpty: !triggerType, triggerTypeChosen: !!triggerType,
+      onTriggerTypeChange: this.onTriggerTypeChange,
+    };
+  }
+}
+</script>
+</body>
+</html>

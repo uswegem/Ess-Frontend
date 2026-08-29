@@ -121,8 +121,9 @@ export default function TenantSwitcher() {
         endIcon={<KeyboardArrowDownIcon />}
         sx={{
           textTransform: 'none',
-          color: 'text.primary',
-          borderColor: 'divider',
+          color: '#344054',
+          borderColor: '#E5E8EF',
+          borderRadius: '20px',
           maxWidth: 220,
           '& .MuiButton-endIcon': { ml: 0.5 },
         }}

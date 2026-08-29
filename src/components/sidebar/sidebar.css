@@ -1,13 +1,26 @@
 .sidebar {
-  background-color: aliceblue !important;
+  background-color: #fff !important;
 }
 .MuiPaper-root.MuiPaper-elevation.MuiPaper-elevation0.MuiDrawer-paper.MuiDrawer-paperAnchorLeft.MuiDrawer-paperAnchorDockedLeft {
-  background-color: aliceblue !important;
+  background-color: #fff !important;
+  border-right: 1px solid #EEF0F4;
 }
 .sidebarWrapper {
-  padding: 10px;
+  padding: 8px 12px;
   margin-top: 40px;
-  background-color: aliceblue !important;
+  background-color: #fff !important;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebarGroupLabel {
+  padding: 6px 12px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #98A2B3;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .sidebarTitle {
@@ -94,7 +107,7 @@ a.link.active .sidebarListItem {
   border-left: 1px solid #ced4da;
 }
 .sidebarSelectHead:hover {
-  background-color: #e9ecef;
+  background-color: #F7F8FB;
 }
 .sidebarSelectList .active div {
   width: 100%;
@@ -109,30 +122,33 @@ a.link.active .sidebarListItem {
 }
 
 .sidebarSelectHead .icon {
-  font-size: 22px !important;
-  color: #000000;
+  font-size: 20px !important;
+  color: #1A2233;
 }
 
 .sidebarSelectHead span {
   font-size: 14px;
-  color: #000000;
-  font-family: "Nanum Gothic", sans-serif;
-  font-weight: 600;
+  color: #1A2233;
+  font-family: inherit;
+  font-weight: 500;
   font-style: normal;
 }
+/* Design-handoff active-nav state: light indigo background + indigo text (not the previous
+   solid-blue-background + white-text treatment). #EEF0FB/#1E3A8A rather than the design's
+   literal #EEF0FB/#2A3A8F, to stay on the app's already-established primary color. */
 .active .sidebarSelectHead {
   width: 100%;
   border-radius: 8px;
-  border-top-right-radius: 0px;
-  background-color: #4361ee;
+  background-color: #EEF0FB;
 }
 
 .active .sidebarSelectHead .icon {
-  color: #fff;
+  color: #1E3A8A;
 }
 
 .active .sidebarSelectHead span {
-  color: #fff;
+  color: #1E3A8A;
+  font-weight: 600;
 }
 
 

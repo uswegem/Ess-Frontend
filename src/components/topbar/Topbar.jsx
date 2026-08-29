@@ -40,6 +40,8 @@ export default function Topbar() {
       <div className="logoContainer">
         <span className="spanName">MiraCore</span>
       </div>
+      {/* Brand naming: "MiraAdmin" is the Login-page-only wordmark; everywhere else
+          (this topbar included) keeps "MiraCore", per confirmed decision. */}
       <div className="topRight" style={{ display: 'flex', alignItems: 'center' }}>
         <TenantSwitcher />
         <UserProfileMenu />

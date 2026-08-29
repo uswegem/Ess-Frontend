@@ -9,15 +9,21 @@ export const BackPaper = styled(Paper)({
     boxShadow: "rgba(0, 0, 0, 0.05) 0px 0px 0px 1px"
 })
 
+// Design-handoff card treatment (used by Login/ForgotPassword/ResetPassword - all three
+// share this one styled component, so updating it here restyles all three consistently).
+// height:"auto" replaces the old fixed 500px - the design's card sizes to its content, and a
+// fixed height doesn't work across three pages with different amounts of content (e.g.
+// ForgotPassword's post-submit state is much shorter than Login's form).
 export const LoginPaper = styled(Paper)({
-    height: "500px",
-    border: "1px solid rgba(114, 114, 114, 0.3)",
-    width: "100%",
+    height: "auto",
+    width: "380px",
+    maxWidth: "90vw",
     backgroundColor: "#fff",
-    padding: "15px",
-    // overflow: "auto",
-    borderRadius:"12px",
-    boxShadow: "none"
+    border: "1px solid #E5E8EF",
+    borderRadius: "14px",
+    padding: "36px 32px",
+    boxShadow: "0 1px 3px rgba(16,24,40,0.04)",
+    boxSizing: "border-box",
 })
 
 export const InnerPaper = styled(Paper)({

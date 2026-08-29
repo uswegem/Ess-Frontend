@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { getRequest, postRequest } from '../../ApiFunction';
 import API from '../../Api';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 import {
   MESSAGE_TYPES,
   SENSITIVE_MESSAGE_TYPES,
@@ -28,6 +29,7 @@ const ManualMessageTrigger = () => {
   const { can } = usePermissions();
   const canTrigger = can('messages:trigger');
   const canTriggerSensitive = can('messages:trigger_sensitive');
+  const { activeTenant } = useActiveTenant();
 
   const loanInputRef = useRef(null);
 
@@ -41,6 +43,8 @@ const ManualMessageTrigger = () => {
 
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
+  const [validating, setValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState(null);
 
   const [historyRows, setHistoryRows] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -141,6 +145,7 @@ const ManualMessageTrigger = () => {
     const type = e.target.value;
     setMessageType(type);
     setResult(null);
+    setValidationResult(null);
     if (type === LOAN_STATUS_REQUEST_TYPE) {
       setMessageDetails('');
       return;
@@ -189,23 +194,67 @@ const ManualMessageTrigger = () => {
     setPendingSend(null);
   };
 
-  const handleValidate = () => {
+  const handleValidate = async () => {
     if (!messageType || messageType === LOAN_STATUS_REQUEST_TYPE) return;
+    setValidationResult(null);
     if (!messageDetails || !messageDetails.trim()) {
       toast.error('Message details are empty');
       return;
     }
+
+    // Cheap client-side pre-check first (catches unclosed tags etc. before the round trip) -
+    // the authoritative check is the server call below, which reuses the exact same
+    // validateOutgoingMessageDetails() rules the real send path enforces.
     try {
       const parser = new window.DOMParser();
       const doc = parser.parseFromString(`<root>${messageDetails}</root>`, 'application/xml');
       const parseError = doc.getElementsByTagName('parsererror')[0];
       if (parseError) {
         toast.error('Message details are not well-formed XML');
+        setValidationResult({ valid: false, errors: ['Message details are not well-formed XML'] });
         return;
       }
-      toast.success('Message details look well-formed');
     } catch (err) {
       toast.error('Could not parse message details as XML');
+      setValidationResult({ valid: false, errors: ['Could not parse message details as XML'] });
+      return;
+    }
+
+    setValidating(true);
+    try {
+      const response = await postRequest(API.VALIDATE_OUTGOING_MESSAGE, {
+        MessageType: messageType,
+        MessageDetails: messageDetails,
+      });
+      const { valid, error, errors } = response.data;
+      if (valid) {
+        toast.success('Message details are valid');
+        setValidationResult({ valid: true });
+      } else {
+        toast.error('Validation failed - see details below');
+        setValidationResult({ valid: false, errors: errors?.length ? errors : [error || 'Validation failed'] });
+      }
+    } catch (err) {
+      const message = err.response?.data?.error || err.response?.data?.message || err.message;
+      toast.error(message);
+      setValidationResult({ valid: false, errors: [message] });
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  // LOAN_STATUS_REQUEST-specific: no server round trip, and deliberately not the general
+  // /outgoing-message/validate endpoint - that endpoint validates against
+  // REQUIRED_FIELDS_BY_MESSAGE_TYPE, which has no entry for LOAN_STATUS_REQUEST (it doesn't
+  // even go through /outgoing-message), so it would silently report "valid" regardless of
+  // whether ApplicationNumber is present. The real, only rule for this type is
+  // loanStatusController.js's own `if (!ApplicationNumber)` check - this mirrors that exact
+  // one-line rule client-side, so there's nothing for it to drift out of sync with.
+  const handleValidateApplicationNumber = () => {
+    if (!applicationNumber || !applicationNumber.trim()) {
+      setValidationResult({ valid: false, errors: ['Application Number is required'] });
+    } else {
+      setValidationResult({ valid: true });
     }
   };
 
@@ -299,6 +348,24 @@ const ManualMessageTrigger = () => {
     return { suggested, other };
   }, [selectedLoan, suggestions]);
 
+  // Quick Actions (LoanLookupCard) shows the backend's raw suggestion list, including
+  // LOAN_STATUS_REQUEST - unlike `suggested` above, which deliberately excludes it since the
+  // Composer's own dropdown/chip grouping already lists it separately (dedicated
+  // ApplicationNumber field, not the XML editor). Quick Actions has no such separate entry
+  // point, so leaving it out there just made it invisible - clicking it here still goes
+  // through the same handleTypeChange(), which already knows how to handle this type.
+  const quickActions = useMemo(() => {
+    if (!suggestions?.suggested) return [];
+    return suggestions.suggested
+      .filter((s) => MESSAGE_TYPES[s.messageType])
+      .map((s) => ({
+        type: s.messageType,
+        ...MESSAGE_TYPES[s.messageType],
+        reason: s.reason,
+        requiresConfirmation: Boolean(s.requiresConfirmation),
+      }));
+  }, [suggestions]);
+
   if (!canTrigger) {
     return (
       <div className="container">
@@ -315,8 +382,8 @@ const ManualMessageTrigger = () => {
 
   return (
     <div className="container">
-      <h5 className="mb-1">Trigger Message</h5>
-      <p className="text-muted mb-3">
+      <div style={{ fontSize: 22, fontWeight: 700, color: '#1A2233', letterSpacing: '-0.2px' }}>Trigger Message</div>
+      <p className="mb-3" style={{ fontSize: 14, color: '#475467', marginTop: 4 }}>
         Manually send an outgoing message to ESS Utumishi for a specific loan.
       </p>
 
@@ -335,7 +402,9 @@ const ManualMessageTrigger = () => {
             inputRef={loanInputRef}
             loanStatus={loanStatus}
             suggestionsLoading={suggestionsLoading}
-            suggestedCount={suggested.length}
+            suggestedCount={quickActions.length}
+            suggested={quickActions}
+            onTypeChange={handleTypeChange}
           />
           <MessageHistoryCard
             rows={historyRows}
@@ -363,6 +432,10 @@ const ManualMessageTrigger = () => {
             onSend={handleSend}
             onReset={handleReset}
             onValidate={handleValidate}
+            onValidateApplicationNumber={handleValidateApplicationNumber}
+            activeTenant={activeTenant}
+            validating={validating}
+            validationResult={validationResult}
           />
         </Grid>
       </Grid>

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Box, Tabs, Tab, TextField, Button, Paper, Typography, MenuItem,
+  Box, Tabs, Tab, TextField, Button, Paper, Typography, MenuItem, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, Alert, CircularProgress,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
@@ -99,6 +99,7 @@ export default function Settings() {
         contactEmail: profile.contactEmail,
         contactPerson: profile.contactPerson,
         contactPhone: profile.contactPhone,
+        organizationRegistrationNumber: profile.organizationRegistrationNumber,
         address: profile.address,
         subscription: profile.subscription ? {
           plan: profile.subscription.plan || 'standard',
@@ -212,10 +213,10 @@ export default function Settings() {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>FSP Settings</Typography>
+      <Typography sx={{ fontSize: 22, fontWeight: 700, color: 'text.primary', letterSpacing: '-0.2px', mb: 2.5 }}>FSP Settings</Typography>
       {isPlatformAdmin && (
         <TextField
-          select sx={{ mb: 2, minWidth: 280 }} label="Tenant"
+          select fullWidth sx={{ mb: 2.5 }} label="Tenant"
           value={selectedTenantId} onChange={(e) => setSelectedTenantId(e.target.value)}
         >
           {tenantOptions.map((t) => (
@@ -223,60 +224,115 @@ export default function Settings() {
           ))}
         </TextField>
       )}
-      <Tabs value={tab} onChange={(_, v) => setSearchParams({ tab: v })}>
-        <Tab label="Profile" />
-        {can('tenant:update') && <Tab label="MIFOS" />}
-        {can('api_keys:manage') && <Tab label="API Keys" />}
-        {can('tenant:update') && <Tab label="Certificates" />}
+      <Tabs
+        value={tab}
+        onChange={(_, v) => setSearchParams({ tab: v })}
+        sx={{ borderBottom: '1px solid', borderColor: 'designBorder.subtle', mb: 3, minHeight: 0 }}
+        TabIndicatorProps={{ sx: { height: 2 } }}
+      >
+        <Tab label="Profile" sx={{ textTransform: 'none', fontWeight: 600, minHeight: 0, pb: 1.25 }} />
+        {can('tenant:update') && <Tab label="MIFOS" sx={{ textTransform: 'none', fontWeight: 600, minHeight: 0, pb: 1.25 }} />}
+        {can('api_keys:manage') && <Tab label="API Keys" sx={{ textTransform: 'none', fontWeight: 600, minHeight: 0, pb: 1.25 }} />}
+        {can('tenant:update') && <Tab label="Certificates" sx={{ textTransform: 'none', fontWeight: 600, minHeight: 0, pb: 1.25 }} />}
       </Tabs>
 
       <TabPanel value={tab} index={0}>
-        <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640 }}>
-          <TextField fullWidth label="Tenant Name" value={profile.tenantName || ''} onChange={(e) => setProfile({ ...profile, tenantName: e.target.value })} />
-          <TextField fullWidth label="FSP Code" value={profile.fspCode || ''} disabled />
-          <TextField fullWidth label="Contact Email" value={profile.contactEmail || ''} onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })} />
-          <TextField fullWidth label="Contact Person" value={profile.contactPerson || ''} onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })} />
-          <TextField fullWidth label="Phone" value={profile.contactPhone || ''} onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })} />
+        <Paper sx={{ p: '28px' }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.muted', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1.75 }}>
+            Profile Details
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2, mb: 3 }}>
+            <TextField fullWidth label="Tenant Name" value={profile.tenantName || ''} onChange={(e) => setProfile({ ...profile, tenantName: e.target.value })} />
+            <TextField fullWidth label="FSP Code" value={profile.fspCode || ''} disabled />
+            <TextField fullWidth label="Contact Email" value={profile.contactEmail || ''} onChange={(e) => setProfile({ ...profile, contactEmail: e.target.value })} />
+            <TextField fullWidth label="Contact Person" value={profile.contactPerson || ''} onChange={(e) => setProfile({ ...profile, contactPerson: e.target.value })} />
+            <TextField fullWidth label="Phone" value={profile.contactPhone || ''} onChange={(e) => setProfile({ ...profile, contactPhone: e.target.value })} />
+            <TextField
+              fullWidth
+              label="Registration Number"
+              value={profile.organizationRegistrationNumber || ''}
+              onChange={(e) => setProfile({ ...profile, organizationRegistrationNumber: e.target.value })}
+            />
+          </Box>
+
+          <Box sx={{ height: '1px', bgcolor: 'designBorder.subtle', mb: 2.5 }} />
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.muted', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1.75 }}>
+            Address
+          </Typography>
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2, mb: 3 }}>
+            <TextField
+              fullWidth
+              label="Address Line 1"
+              value={profile.address?.line1 || ''}
+              onChange={(e) => setProfile({ ...profile, address: { ...profile.address, line1: e.target.value } })}
+            />
+            <TextField
+              fullWidth
+              label="City"
+              value={profile.address?.city || ''}
+              onChange={(e) => setProfile({ ...profile, address: { ...profile.address, city: e.target.value } })}
+            />
+            <TextField
+              fullWidth
+              label="Region"
+              value={profile.address?.region || ''}
+              onChange={(e) => setProfile({ ...profile, address: { ...profile.address, region: e.target.value } })}
+            />
+            <TextField
+              fullWidth
+              label="Country"
+              value={profile.address?.country || 'TZ'}
+              onChange={(e) => setProfile({ ...profile, address: { ...profile.address, country: e.target.value } })}
+            />
+          </Box>
+
           {can('tenant:update') && (
             <>
-              <Typography variant="subtitle2" sx={{ mt: 1 }}>Subscription</Typography>
-              <TextField
-                select
-                fullWidth
-                label="Plan"
-                value={profile.subscription?.plan || 'standard'}
-                onChange={(e) => setProfile({
-                  ...profile,
-                  subscription: { ...profile.subscription, plan: e.target.value },
-                })}
-              >
-                <MenuItem value="trial">Trial</MenuItem>
-                <MenuItem value="standard">Standard</MenuItem>
-                <MenuItem value="enterprise">Enterprise</MenuItem>
-              </TextField>
-              <TextField
-                fullWidth
-                type="number"
-                label="Monthly transaction limit"
-                value={profile.subscription?.monthlyLimit ?? ''}
-                onChange={(e) => setProfile({
-                  ...profile,
-                  subscription: {
-                    ...profile.subscription,
-                    plan: profile.subscription?.plan || 'standard',
-                    monthlyLimit: Number(e.target.value),
-                  },
-                })}
-              />
+              <Box sx={{ height: '1px', bgcolor: 'designBorder.subtle', mb: 2.5 }} />
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.muted', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1.75 }}>
+                Subscription
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2, mb: 3 }}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Plan"
+                  value={profile.subscription?.plan || 'standard'}
+                  onChange={(e) => setProfile({
+                    ...profile,
+                    subscription: { ...profile.subscription, plan: e.target.value },
+                  })}
+                >
+                  <MenuItem value="trial">Trial</MenuItem>
+                  <MenuItem value="standard">Standard</MenuItem>
+                  <MenuItem value="enterprise">Enterprise</MenuItem>
+                </TextField>
+                <TextField
+                  fullWidth
+                  type="number"
+                  label="Monthly transaction limit"
+                  value={profile.subscription?.monthlyLimit ?? ''}
+                  onChange={(e) => setProfile({
+                    ...profile,
+                    subscription: {
+                      ...profile.subscription,
+                      plan: profile.subscription?.plan || 'standard',
+                      monthlyLimit: Number(e.target.value),
+                    },
+                  })}
+                />
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="contained" onClick={saveProfile} sx={{ height: 40 }}>Save</Button>
+              </Box>
             </>
           )}
-          {can('tenant:update') && <Button variant="contained" onClick={saveProfile}>Save</Button>}
         </Paper>
       </TabPanel>
 
       {can('tenant:update') && (
         <TabPanel value={tab} index={1}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 640 }}>
+          <Paper sx={{ p: '24px', display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 520 }}>
             <TextField select fullWidth label="Mode" value={mifos.mode || 'inherit_default'} onChange={(e) => setMifos({ ...mifos, mode: e.target.value })}>
               <MenuItem value="inherit_default">Inherit default</MenuItem>
               <MenuItem value="override">Override</MenuItem>
@@ -331,12 +387,13 @@ export default function Settings() {
                 />
               </Box>
             )}
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
               <Button
                 variant="contained"
                 onClick={saveMifos}
                 disabled={mifosSaving || mifosValidating}
                 startIcon={mifosSaving ? <CircularProgress size={18} color="inherit" /> : null}
+                sx={{ height: 40 }}
               >
                 {mifosSaving ? 'Saving...' : 'Save'}
               </Button>
@@ -345,6 +402,7 @@ export default function Settings() {
                 onClick={validateMifos}
                 disabled={mifosSaving || mifosValidating}
                 startIcon={mifosValidating ? <CircularProgress size={18} /> : null}
+                sx={{ height: 40 }}
               >
                 {mifosValidating ? 'Validating...' : 'Validate'}
               </Button>
@@ -355,13 +413,14 @@ export default function Settings() {
 
       {can('api_keys:manage') && (
         <TabPanel value={tab} index={can('tenant:update') ? 2 : 1}>
-          <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
+          <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'flex-end' }}>
             <TextField size="small" label="Key name" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} />
             <Button
               variant="contained"
               onClick={handleCreateKey}
               disabled={Boolean(keyActionLoading)}
               startIcon={keyActionLoading === 'create' ? <CircularProgress size={18} color="inherit" /> : null}
+              sx={{ height: 40 }}
             >
               {keyActionLoading === 'create' ? 'Creating...' : 'Create Key'}
             </Button>
@@ -369,10 +428,32 @@ export default function Settings() {
           <Paper sx={{ height: 360 }}>
             <DataGrid
               rows={keys.map((k) => ({ ...k, id: k._id }))}
+              components={{
+                NoRowsOverlay: () => (
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                    <Typography sx={{ fontSize: 14, color: 'text.muted' }}>No rows</Typography>
+                  </Box>
+                ),
+              }}
+              sx={{ border: 0, '& .MuiDataGrid-columnHeaders': { bgcolor: '#FAFBFC' } }}
               columns={[
                 { field: 'name', headerName: 'Name', flex: 1 },
                 { field: 'keyPrefix', headerName: 'Prefix', width: 140 },
-                { field: 'status', headerName: 'Status', width: 100 },
+                {
+                  field: 'status',
+                  headerName: 'Status',
+                  width: 120,
+                  sortable: false,
+                  renderCell: (p) => (
+                    <Chip
+                      size="small"
+                      label={p.value}
+                      sx={isApiKeyActive(p.value)
+                        ? { bgcolor: 'statusPill.green.bg', color: 'statusPill.green.text' }
+                        : { bgcolor: 'statusPill.gray.bg', color: 'statusPill.gray.text' }}
+                    />
+                  ),
+                },
                 {
                   field: 'actions', headerName: 'Actions', width: 200,
                   renderCell: (p) => {
@@ -419,15 +500,15 @@ export default function Settings() {
 
       {can('tenant:update') && (
         <TabPanel value={tab} index={can('api_keys:manage') ? 3 : 2}>
-          <Paper sx={{ p: 2, maxWidth: 640 }}>
+          <Paper sx={{ p: '24px', maxWidth: 520 }}>
             {certs?.hasCertificates && (
               <Alert severity="success" sx={{ mb: 2 }}>
                 Certificates uploaded. Fingerprint: {certs.certificateFingerprint}
               </Alert>
             )}
-            <Typography variant="body2" sx={{ mb: 2 }}>Upload ESS signing certificates (PEM format)</Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Button variant="outlined" component="label">
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: 'text.primary', mb: 2 }}>Upload ESS signing certificates (PEM format)</Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+              <Button variant="outlined" component="label" fullWidth sx={{ height: 42 }}>
                 Public cert
                 <input
                   hidden
@@ -439,7 +520,7 @@ export default function Settings() {
               {certFiles.publicCert && (
                 <Typography variant="caption" color="text.secondary">Selected: {certFiles.publicCert.name}</Typography>
               )}
-              <Button variant="outlined" component="label">
+              <Button variant="outlined" component="label" fullWidth sx={{ height: 42 }}>
                 Private key
                 <input
                   hidden
@@ -451,7 +532,7 @@ export default function Settings() {
               {certFiles.privateKey && (
                 <Typography variant="caption" color="text.secondary">Selected: {certFiles.privateKey.name}</Typography>
               )}
-              <Button variant="outlined" component="label">
+              <Button variant="outlined" component="label" fullWidth sx={{ height: 42 }}>
                 CA cert (optional)
                 <input
                   hidden
@@ -465,6 +546,8 @@ export default function Settings() {
               )}
               <Button
                 variant="contained"
+                fullWidth
+                sx={{ height: 42 }}
                 disabled={certUploading || !certFiles.publicCert || !certFiles.privateKey}
                 startIcon={certUploading ? <CircularProgress size={16} color="inherit" /> : null}
                 onClick={async () => {

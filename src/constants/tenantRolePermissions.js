@@ -22,6 +22,10 @@ export const ROLE_DESCRIPTIONS = {
   support_staff: 'Customer support — read loans, messages, notifications',
 };
 
+// Mirrors backend/src/models/TenantUser.js's ROLE_PERMISSIONS exactly - keep in sync by
+// hand (no shared package between frontend/backend). Previously drifted (was missing
+// messages:trigger, messages:trigger_sensitive, products:submit) - found and fixed while
+// building the permission editor below.
 export const ROLE_PERMISSIONS = {
   tenant_admin: [
     'tenant:read',
@@ -30,12 +34,17 @@ export const ROLE_PERMISSIONS = {
     'api_keys:manage',
     'dashboard:read',
     'audit:read',
+    'messages:trigger',
+    'messages:trigger_sensitive',
+    'products:submit',
   ],
   operations_manager: [
     'loans:read',
     'loans:operate',
     'messages:read',
     'messages:operate',
+    'messages:trigger',
+    'products:submit',
     'dashboard:read',
   ],
   finance_officer: [
@@ -62,6 +71,9 @@ export const PERMISSION_DESCRIPTIONS = {
   'loans:operate': 'Loan operational actions (e.g. disbursement notifications)',
   'messages:read': 'View ESS message logs and pending responses',
   'messages:operate': 'Resend and manage message workflows',
+  'messages:trigger': 'Send outgoing ESS messages and loan-status requests',
+  'messages:trigger_sensitive': 'Send sensitive messages (e.g. loan liquidation notifications)',
+  'products:submit': 'Submit loan products for approval',
   'repayments:read': 'View repayment schedules and status',
   'reports:read': 'Access financial and operational reports',
   'notifications:read': 'View notification templates and delivery status',
@@ -79,10 +91,20 @@ export const ALL_PERMISSIONS = [
   'loans:operate',
   'messages:read',
   'messages:operate',
+  'messages:trigger',
+  'messages:trigger_sensitive',
+  'products:submit',
   'repayments:read',
   'reports:read',
   'notifications:read',
 ];
+
+// Same set as ALL_PERMISSIONS - the permission editor uses this name to make explicit that
+// these are the only strings the backend will accept (backend/src/models/TenantUser.js's
+// ASSIGNABLE_PERMISSIONS, enforced server-side by Joi). Deliberately excludes reporting:read
+// / reporting:all_tenants: those are API-key-only grants (see routes/reporting.js), never
+// assignable to a human tenant user, on any role, through this UI.
+export const ASSIGNABLE_PERMISSIONS = ALL_PERMISSIONS;
 
 export function roleHasPermission(role, permission) {
   return (ROLE_PERMISSIONS[role] || []).includes(permission);

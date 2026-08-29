@@ -13,6 +13,8 @@ import Routing from './Routing.js';
 import Sidebar from './components/sidebar/Sidebar';
 import Topbar from './components/topbar/Topbar';
 import Login from './pages/login/Login.jsx';
+import ForgotPassword from './pages/login/ForgotPassword.jsx';
+import ResetPassword from './pages/login/ResetPassword.jsx';
 import { Navigate, useLocation } from 'react-router-dom';
 import { MenuOpen } from '@mui/icons-material';
 import { Toaster } from 'react-hot-toast';
@@ -71,6 +73,12 @@ const AppBar = styled(MuiAppBar, {
 
 
 
+// Paths that render outside the authenticated app shell (no Sidebar/Topbar/Routing),
+// same tier as "/" (Login) - Forgot/Reset Password must be reachable by someone who isn't
+// logged in yet (e.g. clicking a link from an email), so they can't live inside the
+// Routing tree that the shell branch below renders unconditionally for any other path.
+const PUBLIC_NO_SHELL_PATHS = ['/', '/forgot-password', '/reset-password'];
+
 export default function App() {
   const router = useLocation();
   const [open, setOpen] = React.useState(true);
@@ -92,7 +100,7 @@ export default function App() {
     window.addEventListener("resize", handleResize)
   })
 
-  const idleLogoutEnabled = Boolean(auth) && router.pathname !== "/";
+  const idleLogoutEnabled = Boolean(auth) && !PUBLIC_NO_SHELL_PATHS.includes(router.pathname);
   const { showWarning, countdown, stayLoggedIn, logoutNow } = useIdleLogout({
     enabled: idleLogoutEnabled,
     timeout: IDLE_LOGOUT_TIMEOUT_MS,
@@ -131,7 +139,7 @@ export default function App() {
           since react-hot-toast is still the active one for Settings/Login/ChangePassword/
           UserDetails. */}
       <ToastContainer position="top-right" autoClose={5000} />
-      {router.pathname !== "/"
+      {!PUBLIC_NO_SHELL_PATHS.includes(router.pathname)
         ?
         <Box sx={{
           display: 'flex',
@@ -146,7 +154,7 @@ export default function App() {
                   aria-label="open drawer"
                   onClick={handleDrawerOpen}
                   edge="start"
-                  sx={{ mr: 2, color: "primary.contrastText", ...(open && { display: 'none' }) }}
+                  sx={{ mr: 2, color: "text.secondary", ...(open && { display: 'none' }) }}
                 >
                   <MenuIcon className='topBarIcon' />
                 </IconButton>
@@ -154,7 +162,7 @@ export default function App() {
                 <IconButton
                   onClick={handleDrawerClose}
                   edge="start"
-                  sx={{ mr: 2, color: "primary.contrastText" }}
+                  sx={{ mr: 2, color: "text.secondary" }}
                 >
                   <MenuOpen className='topBarIcon' />
                 </IconButton>
@@ -192,8 +200,14 @@ export default function App() {
         : router.pathname === "/" && auth
           ?
           <Navigate to="/dashboard"></Navigate>
-          :
-          <Login />
+          : router.pathname === "/forgot-password"
+            ?
+            <ForgotPassword />
+            : router.pathname === "/reset-password"
+              ?
+              <ResetPassword />
+              :
+              <Login />
       }
     </>
   )

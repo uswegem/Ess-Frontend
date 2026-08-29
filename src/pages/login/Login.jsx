@@ -74,46 +74,49 @@ export default function Login() {
           <LoginPaper data-aos="zoom-in">
             <form onSubmit={submitForm} method="post">
               <div className="login-page">
-                <div className="w-100 text-center">
-                  <br />
-                  <div className="fields">
-                    <h4 className="w-100 text-center">MiraCore</h4>
-                    <div className="logo mt-4" data-aos="fade-up">
-                      Sign In to Administrator
-                    </div>
-                  </div>
+                <div className="loginBrand">
+                  <img src="/images/miraadmin-logo.ico" alt="MiraAdmin logo" className="loginLogoMark" />
+                  <div className="loginWordmark">MiraAdmin</div>
+                  <div className="loginSubtitle">Sign in to your admin account</div>
                 </div>
                 <div className="fields">
-                  <label>Username</label>
-                  <input
-                    required
-                    autoComplete="username"
-                    type="text"
-                    id="username"
-                    name="username"
-                    placeholder="username"
-                    onChange={inputEvent}
-                  />
-                  <label>Password</label>
-                  <div className="w-100 view">
+                  <label>
+                    Username
                     <input
                       required
-                      type={view ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      id="password"
-                      name="password"
-                      placeholder="********"
+                      autoComplete="username"
+                      type="text"
+                      id="username"
+                      name="username"
+                      placeholder="username"
                       onChange={inputEvent}
                     />
-                    <i
-                      className={!view ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'}
-                      onClick={handleView}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={() => {}}
-                    />
+                  </label>
+                  <label>
+                    Password
+                    <div className="w-100 view">
+                      <input
+                        required
+                        type={view ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        id="password"
+                        name="password"
+                        placeholder="********"
+                        onChange={inputEvent}
+                      />
+                      <i
+                        className={!view ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'}
+                        onClick={handleView}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={() => {}}
+                      />
+                    </div>
+                  </label>
+                  <div className="forgotPassword">
+                    <span onClick={() => navigate('/forgot-password')}>Forgot password?</span>
                   </div>
-                  <button type="submit" className="custom-button w-100 mt-2">
+                  <button type="submit" className="custom-button w-100">
                     Sign In
                   </button>
                 </div>

@@ -52,6 +52,24 @@ const rowStatusChip = (row) => {
     return { label: "Not submitted", color: "default" };
 };
 
+// Maps rowStatusChip's MUI semantic color name to the design-token handoff's statusPill
+// bg/text pairs, via explicit sx (rather than Chip's `color` prop, which pulls from
+// theme.palette.success/error/warning - different, unrelated hex values used elsewhere for
+// buttons/alerts/etc., not meant to be repurposed as the status-pill palette).
+// "warning" (Edited since submit) has no equivalent in the design's token list (only
+// green/gray/red/indigo are defined) - left on the theme's existing warning color rather
+// than force-fit into one of the four.
+const STATUS_PILL_COLOR_MAP = { success: "green", error: "red", default: "gray" };
+const statusPillSx = (chip) => {
+    const pillKey = STATUS_PILL_COLOR_MAP[chip.color];
+    if (!pillKey) return {}; // "warning" - falls through to Chip's own default color styling
+    return {
+        bgcolor: chip.variant === "outlined" ? "transparent" : `statusPill.${pillKey}.bg`,
+        color: `statusPill.${pillKey}.text`,
+        borderColor: chip.variant === "outlined" ? `statusPill.${pillKey}.text` : undefined,
+    };
+};
+
 // Namespaced so it doesn't collide with other pages' DataGrids (Loan, Users, etc. each have
 // their own instance) if they ever grow the same feature.
 const COLUMN_VISIBILITY_STORAGE_KEY = "ess2.products.columnVisibility";
@@ -65,6 +83,25 @@ const loadStoredColumnVisibility = () => {
     }
 };
 
+// Design-handoff grouped-sections pattern for the Add/Edit Product dialog - a section label
+// above a responsive field grid, same shape as ReviewProductModal's FieldGroup. `grid=false`
+// renders children as-is (used for Terms & Conditions, whose content is a dynamic Stack of
+// rows, not a simple field grid). `last` skips the bottom margin/divider on the final section.
+function FormSection({ title, children, grid = true, last = false }) {
+    return (
+        <Box sx={{ mb: last ? 0 : 2.75, pb: last ? 0 : 2.75, borderBottom: last ? 'none' : '1px solid', borderColor: 'designBorder.subtle' }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.muted', textTransform: 'uppercase', letterSpacing: '0.04em', mb: 1.25 }}>
+                {title}
+            </Typography>
+            {grid ? (
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2 }}>
+                    {children}
+                </Box>
+            ) : children}
+        </Box>
+    );
+}
+
 const emptyProductFields = {
         productCode: "",
         productName: "",
@@ -75,6 +112,7 @@ const emptyProductFields = {
         insurance: "",
         minAmount: "",
         maxAmount: "",
+        otherCharges: "",
         repaymentType: "",
         insuranceType: "",
         productDescription: "",
@@ -110,7 +148,7 @@ const Product = () => {
     // being typed (comma-formatting would fight cursor position); on blur it switches to the
     // comma-formatted display via the shared formatNumber utility. `form.minAmount`/
     // `form.maxAmount` themselves always hold the raw value - this tracks display state only.
-    const [amountFieldFocus, setAmountFieldFocus] = useState({ minAmount: false, maxAmount: false });
+    const [amountFieldFocus, setAmountFieldFocus] = useState({ minAmount: false, maxAmount: false, otherCharges: false });
     // Tracks which row + action (View/Edit only - the two actions that make a real API call
     // directly on icon click, with no confirm dialog in between) is currently in flight, so
     // the Action column can swap that one icon for a spinner and lock the rest of its row.
@@ -167,6 +205,12 @@ const Product = () => {
             case "maxAmount":
                 if (!value) error = "This field is required";
                 else if (+value > 99999999999999999999999999999999999999)
+                    error = "Max 38,2 digits";
+                break;
+            case "otherCharges":
+                // Optional, like Processing Fee - has a server-side default (50000), so an
+                // empty value here is valid (not "This field is required").
+                if (value && +value > 99999999999999999999999999999999999999)
                     error = "Max 38,2 digits";
                 break;
             case "insuranceType":
@@ -235,6 +279,10 @@ const Product = () => {
         insurance: toNumberOrUndefined(formData.insurance),
         minAmount: toNumberOrUndefined(formData.minAmount),
         maxAmount: toNumberOrUndefined(formData.maxAmount),
+        // Left undefined (not defaulted to 0 here) when omitted, same reasoning as the other
+        // toNumberOrUndefined fields - lets the backend's own schema default (50000) apply
+        // rather than this form silently forcing 0.
+        otherCharges: toNumberOrUndefined(formData.otherCharges),
         repaymentType: formData.repaymentType || "Flat",
         insuranceType: formData.insuranceType,
         forExecutive: formData.forExecutive,
@@ -499,6 +547,7 @@ const Product = () => {
                 insurance: p.insurance ?? "",
                 minAmount: p.minAmount ?? "",
                 maxAmount: p.maxAmount ?? "",
+                otherCharges: p.otherCharges ?? "",
                 repaymentType: p.repaymentType || "",
                 insuranceType: p.insuranceType || "",
                 productDescription: p.productDescription || "",
@@ -662,6 +711,7 @@ const Product = () => {
                 interestRate: p.interestRate ?? p.rate,
                 processingFee: p.processingFee,
                 insurance: p.insurance,
+                otherCharges: p.otherCharges,
                 repaymentType: p.repaymentType,
                 insuranceType: p.insuranceType,
                 forExecutive: p.forExecutive ? "Yes" : "No",
@@ -754,6 +804,7 @@ const Product = () => {
         interestRate: p.interestRate,
         processingFee: p.processingFee,
         insurance: p.insurance,
+        otherCharges: p.otherCharges,
         repaymentType: p.repaymentType,
         insuranceType: p.insuranceType,
         forExecutive: p.forExecutive ? "Yes" : "No",
@@ -811,17 +862,18 @@ const Product = () => {
             sortable: false,
             renderCell: (params) => {
                 const chip = rowStatusChip(params.row);
-                return <Chip size="small" label={chip.label} color={chip.color} variant={chip.variant} />;
+                return <Chip size="small" label={chip.label} sx={statusPillSx(chip)} variant={chip.variant} />;
             },
         },
         { field: "deductionCode", headerName: "Deduction Code", width: 130 },
-        { field: "minTenure", headerName: "Min Tenure", width: 110 },
-        { field: "maxTenure", headerName: "Max Tenure", width: 110 },
-        { field: "minAmount", headerName: "Min Amount", width: 130, valueFormatter: (v) => formatNumber(v.value) },
-        { field: "maxAmount", headerName: "Max Amount", width: 130, valueFormatter: (v) => formatNumber(v.value) },
-        { field: "interestRate", headerName: "Interest Rate (%)", width: 140 },
-        { field: "processingFee", headerName: "Processing Fee (%)", width: 150 },
-        { field: "insurance", headerName: "Insurance (%)", width: 120 },
+        { field: "minTenure", headerName: "Min Tenure", width: 110, align: "right", headerAlign: "right" },
+        { field: "maxTenure", headerName: "Max Tenure", width: 110, align: "right", headerAlign: "right" },
+        { field: "minAmount", headerName: "Min Amount", width: 130, align: "right", headerAlign: "right", valueFormatter: (v) => formatNumber(v.value) },
+        { field: "maxAmount", headerName: "Max Amount", width: 130, align: "right", headerAlign: "right", valueFormatter: (v) => formatNumber(v.value) },
+        { field: "interestRate", headerName: "Interest Rate (%)", width: 140, align: "right", headerAlign: "right" },
+        { field: "processingFee", headerName: "Processing Fee (%)", width: 150, align: "right", headerAlign: "right" },
+        { field: "insurance", headerName: "Insurance (%)", width: 120, align: "right", headerAlign: "right" },
+        { field: "otherCharges", headerName: "Other Charges", width: 140, align: "right", headerAlign: "right", valueFormatter: (v) => formatNumber(v.value) },
         { field: "repaymentType", headerName: "Repayment Type", width: 140 },
         { field: "insuranceType", headerName: "Insurance Type", width: 140 },
         { field: "forExecutive", headerName: "For Executive", width: 120 },
@@ -838,7 +890,7 @@ const Product = () => {
                 if (row.status === "draft") {
                     return (
                         <div className="d-flex justify-content-center gap-2 align-items-center">
-                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "gray", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
+                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "#98A2B3", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
                             <button className="custom-button" onClick={() => handleResumeDraft(row.id)}>Resume</button>
                             <button className="custom-button" onClick={() => handleDiscardDraft(row.id)}>Discard</button>
                         </div>
@@ -849,7 +901,7 @@ const Product = () => {
                 if (row.isActive === false) {
                     return (
                         <div className="d-flex justify-content-center gap-2 align-items-center">
-                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "gray", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
+                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "#98A2B3", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
                         </div>
                     );
                 }
@@ -860,7 +912,7 @@ const Product = () => {
                 if (row.utumishiSyncStatus === "SUBMITTED") {
                     return (
                         <div className="d-flex justify-content-center gap-2 align-items-center">
-                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "gray", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
+                            {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "#98A2B3", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
                             {renderActionIcon(PowerSettingsNewOutlined, { row, color: "error.main", titleAccess: "Decommission", onClick: () => openDecommissionDialog(row.id) })}
                         </div>
                     );
@@ -869,10 +921,10 @@ const Product = () => {
                 // Active but not yet submitted (or needs re-submit / retry): full set.
                 return (
                     <div className="d-flex justify-content-center gap-2 align-items-center">
-                        {renderActionIcon(LockOpenOutlined, { row, color: "green", titleAccess: "Unlock", onClick: () => console.log("Unlock product:", row.id) })}
-                        {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "gray", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
-                        {renderActionIcon(EditOutlined, { row, action: "edit", color: "blue", titleAccess: "Edit", onClick: () => openEditDialog(row.id) })}
-                        {renderActionIcon(DeleteOutline, { row, color: "red", titleAccess: "Delete", onClick: () => openDeleteDialog(row.id, row.name) })}
+                        {renderActionIcon(LockOpenOutlined, { row, color: "#12794A", titleAccess: "Unlock", onClick: () => console.log("Unlock product:", row.id) })}
+                        {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "#98A2B3", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
+                        {renderActionIcon(EditOutlined, { row, action: "edit", color: "#1E3A8A", titleAccess: "Edit", onClick: () => openEditDialog(row.id) })}
+                        {renderActionIcon(DeleteOutline, { row, color: "#B42318", titleAccess: "Delete", onClick: () => openDeleteDialog(row.id, row.name) })}
                         {renderActionIcon(PowerSettingsNewOutlined, { row, color: "error.main", titleAccess: "Decommission", onClick: () => openDecommissionDialog(row.id) })}
                     </div>
                 );
@@ -927,8 +979,8 @@ const Product = () => {
                 <div className="col-xs-12">
                     <div className="d-flex justify-content-between align-items-center">
                         <div>
-                            <h5 className="mb-1">Product Management</h5>
-                            <p className="text-muted mb-4">
+                            <div style={{ fontSize: 22, fontWeight: 700, color: "#1A2233", letterSpacing: "-0.2px" }}>Product Management</div>
+                            <p className="mb-4" style={{ fontSize: 14, color: "#475467", marginTop: 4 }}>
                                 Manage product catalog, update product details, and control availability.
                             </p>
                         </div>
@@ -938,7 +990,7 @@ const Product = () => {
                                     Decommission Selected ({selectedProductCodes.length})
                                 </button>
                             )}
-                            <button className="custom-button" onClick={openColumnsMenu}>
+                            <button className="custom-button-outline" onClick={openColumnsMenu}>
                                 <ViewColumnOutlined sx={{ fontSize: 18, verticalAlign: "text-bottom", mr: 0.5 }} />
                                 Columns
                             </button>
@@ -971,7 +1023,7 @@ const Product = () => {
                             </Stack>
                             <Divider sx={{ my: 1 }} />
                             <Stack direction="row" justifyContent="flex-end" spacing={1}>
-                                <button className="custom-button" onClick={closeColumnsMenu}>Cancel</button>
+                                <button className="custom-button-outline" onClick={closeColumnsMenu}>Cancel</button>
                                 <button className="custom-button" onClick={applyColumnVisibility}>Apply</button>
                             </Stack>
                         </Box>
@@ -992,7 +1044,12 @@ const Product = () => {
                             isRowSelectable={(params) => params.row.status !== "draft" && params.row.isActive !== false}
                             onRowSelectionModelChange={(model) => setSelectedProductCodes(model)}
                             rowSelectionModel={selectedProductCodes}
-                            sx={{ border: 0 }}
+                            getRowClassName={(params) => (params.indexRelativeToCurrentPage % 2 === 0 ? "productRowEven" : "productRowOdd")}
+                            sx={{
+                                border: 0,
+                                "& .productRowOdd": { bgcolor: "#FAFBFC" },
+                                "& .MuiDataGrid-columnHeaders": { bgcolor: "#FAFBFC" },
+                            }}
                         />
                     </Paper>
                 </div>
@@ -1005,15 +1062,24 @@ const Product = () => {
                 aria-labelledby="scroll-dialog-title"
                 aria-describedby="scroll-dialog-description"
             >
-                <DialogTitle id="scroll-dialog-title">{editMode ? "Edit Product" : "Add Product"}</DialogTitle>
+                <DialogTitle id="scroll-dialog-title" sx={{ borderBottom: '1px solid', borderColor: 'designBorder.subtle' }}>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: '#1A2233' }}>{editMode ? "Edit Product" : "Add Product"}</div>
+                    {editMode && form.productName && (
+                        <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{form.productName}</div>
+                    )}
+                </DialogTitle>
                 <DialogContent dividers={scroll === 'paper'}>
                     <DialogContentText
                         id="scroll-dialog-description"
                         ref={descriptionElementRef}
                         tabIndex={-1}
                     >
-                        <Stack spacing={2}>
-                            <Stack direction="row" spacing={2}>
+                        <Stack spacing={0}>
+                            {/* Design-handoff grouped-sections pattern (same shape as ReviewProductModal's
+                                FieldGroup): a section label above a responsive grid. Every field below keeps
+                                its exact value/onChange/error/helperText prop from before this restyle -
+                                only the wrapping layout changed. */}
+                            <FormSection title="Tenant">
                                 <TextField
                                     label="FSP Code"
                                     fullWidth
@@ -1030,79 +1096,83 @@ const Product = () => {
                                     disabled
                                     helperText="From active tenant"
                                 />
-                            </Stack>
-                            {/* Product Code */}
-                            <TextField
-                                label="Product Code"
-                                fullWidth
-                                size="small"
-                                value={form.productCode}
-                                onChange={(e) => handleFormChange("productCode", e.target.value)}
-                                error={!!errors.productCode}
-                                helperText={errors.productCode}
-                            />
-                            {/* Product Name */}
-                            <TextField
-                                label="Product Name"
-                                fullWidth
-                                size="small"
-                                value={form.productName}
-                                onChange={(e) => handleFormChange("productName", e.target.value)}
-                                error={!!errors.productName}
-                                helperText={errors.productName}
-                            />
-                            {/* Deduction Code */}
-                            <TextField
-                                label="Deduction Code"
-                                fullWidth
-                                size="small"
-                                value={form.deductionCode}
-                                onChange={(e) => handleFormChange("deductionCode", e.target.value)}
-                                error={!!errors.deductionCode}
-                                helperText={errors.deductionCode}
-                            />
-                            <TextField
-                                label="MIFOS Product ID"
-                                type="number"
-                                fullWidth
-                                size="small"
-                                value={form.mifosProductId}
-                                onChange={(e) => handleFormChange("mifosProductId", e.target.value)}
-                                helperText="Fineract loan product ID (e.g. 17)"
-                            />
-                            {/* Product Description */}
-                            <TextField
-                                label="Product Description"
-                                fullWidth
-                                multiline
-                                rows={3}
-                                size="small"
-                                value={form.productDescription}
-                                onChange={(e) => handleFormChange("productDescription", e.target.value)}
-                            />
-                            {/* Tenure */}
-                            <TextField
-                                label="Min Tenure"
-                                type="number"
-                                fullWidth
-                                size="small"
-                                value={form.minTenure}
-                                onChange={(e) => handleFormChange("minTenure", e.target.value)}
-                                error={!!errors.minTenure}
-                                helperText={errors.minTenure}
-                            />
-                            <TextField
-                                label="Max Tenure"
-                                type="number"
-                                fullWidth
-                                size="small"
-                                value={form.maxTenure}
-                                onChange={(e) => handleFormChange("maxTenure", e.target.value)}
-                                error={!!errors.maxTenure}
-                                helperText={errors.maxTenure}
-                            />
-                            {/* Interest, Processing, Insurance */}
-                            <Stack direction="row" spacing={2}>
+                            </FormSection>
+
+                            <FormSection title="Identifiers">
+                                <TextField
+                                    label="Product Code"
+                                    fullWidth
+                                    size="small"
+                                    value={form.productCode}
+                                    onChange={(e) => handleFormChange("productCode", e.target.value)}
+                                    error={!!errors.productCode}
+                                    helperText={errors.productCode}
+                                />
+                                <TextField
+                                    label="Deduction Code"
+                                    fullWidth
+                                    size="small"
+                                    value={form.deductionCode}
+                                    onChange={(e) => handleFormChange("deductionCode", e.target.value)}
+                                    error={!!errors.deductionCode}
+                                    helperText={errors.deductionCode}
+                                />
+                                <TextField
+                                    label="Product Name"
+                                    fullWidth
+                                    size="small"
+                                    sx={{ gridColumn: "1 / -1" }}
+                                    value={form.productName}
+                                    onChange={(e) => handleFormChange("productName", e.target.value)}
+                                    error={!!errors.productName}
+                                    helperText={errors.productName}
+                                />
+                                <TextField
+                                    label="MIFOS Product ID"
+                                    type="number"
+                                    fullWidth
+                                    size="small"
+                                    sx={{ gridColumn: "1 / -1" }}
+                                    value={form.mifosProductId}
+                                    onChange={(e) => handleFormChange("mifosProductId", e.target.value)}
+                                    helperText="Fineract loan product ID (e.g. 17)"
+                                />
+                            </FormSection>
+
+                            <FormSection title="Description">
+                                <TextField
+                                    label="Product Description"
+                                    fullWidth
+                                    multiline
+                                    rows={3}
+                                    size="small"
+                                    sx={{ gridColumn: "1 / -1" }}
+                                    value={form.productDescription}
+                                    onChange={(e) => handleFormChange("productDescription", e.target.value)}
+                                />
+                            </FormSection>
+
+                            <FormSection title="Terms & Pricing">
+                                <TextField
+                                    label="Min Tenure"
+                                    type="number"
+                                    fullWidth
+                                    size="small"
+                                    value={form.minTenure}
+                                    onChange={(e) => handleFormChange("minTenure", e.target.value)}
+                                    error={!!errors.minTenure}
+                                    helperText={errors.minTenure}
+                                />
+                                <TextField
+                                    label="Max Tenure"
+                                    type="number"
+                                    fullWidth
+                                    size="small"
+                                    value={form.maxTenure}
+                                    onChange={(e) => handleFormChange("maxTenure", e.target.value)}
+                                    error={!!errors.maxTenure}
+                                    helperText={errors.maxTenure}
+                                />
                                 <TextField
                                     label="Interest Rate (%)"
                                     type="number"
@@ -1133,9 +1203,30 @@ const Product = () => {
                                     error={!!errors.insurance}
                                     helperText={errors.insurance}
                                 />
-                            </Stack>
-                            {/* Min/Max Amount */}
-                            <Stack direction="row" spacing={2}>
+                                <FormControl fullWidth size="small">
+                                    <InputLabel>Repayment Type</InputLabel>
+                                    <Select
+                                        value={form.repaymentType}
+                                        onChange={(e) => handleFormChange("repaymentType", e.target.value)}
+                                    >
+                                        <MenuItem value="Flat">Flat</MenuItem>
+                                        <MenuItem value="Reducing">Reducing</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <FormControl fullWidth error={!!errors.insuranceType} size="small">
+                                    <InputLabel>Insurance Type</InputLabel>
+                                    <Select
+                                        value={form.insuranceType}
+                                        onChange={(e) => handleFormChange("insuranceType", e.target.value)}
+                                    >
+                                        <MenuItem value="UP_FRONT">Up Front</MenuItem>
+                                        <MenuItem value="DISTRIBUTED">Distributed</MenuItem>
+                                    </Select>
+                                    {errors.insuranceType && <FormHelperText>{errors.insuranceType}</FormHelperText>}
+                                </FormControl>
+                            </FormSection>
+
+                            <FormSection title="Amounts" last>
                                 <TextField
                                     label="Min Amount"
                                     type="text"
@@ -1162,125 +1253,127 @@ const Product = () => {
                                     error={!!errors.maxAmount}
                                     helperText={errors.maxAmount}
                                 />
-                            </Stack>
-                            {/* Repayment Type */}
-                            <FormControl fullWidth size="small">
-                                <InputLabel>Repayment Type</InputLabel>
-                                <Select
-                                    value={form.repaymentType}
-                                    onChange={(e) => handleFormChange("repaymentType", e.target.value)}
-                                >
-                                    <MenuItem value="Flat">Flat</MenuItem>
-                                    <MenuItem value="Reducing">Reducing</MenuItem>
-                                </Select>
-                            </FormControl>
-                            {/* Insurance Type */}
-                            <FormControl fullWidth error={!!errors.insuranceType} size="small">
-                                <InputLabel>Insurance Type</InputLabel>
-                                <Select
-                                    value={form.insuranceType}
-                                    onChange={(e) => handleFormChange("insuranceType", e.target.value)}
-                                >
-                                    <MenuItem value="UP_FRONT">Up Front</MenuItem>
-                                    <MenuItem value="DISTRIBUTED">Distributed</MenuItem>
-                                </Select>
-                                {errors.insuranceType && <FormHelperText>{errors.insuranceType}</FormHelperText>}
-                            </FormControl>
-                            {/* Terms & Conditions */}
-                            <Stack spacing={2}>
-                                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                    <h6>Terms & Conditions</h6>
-                                    {form?.termsCondition?.length === 0 &&
-                                        <button className="custom-button" onClick={handleAddTerm}>+ Add Term</button>
-                                    }
+                                {/* Other Charges - a flat TZS amount (not a percentage like Interest/
+                                    Processing/Insurance above), so it's grouped here with the other
+                                    flat-amount fields instead. ess2-internal only - not part of the
+                                    PRODUCT_DETAIL message sent to Utumishi. */}
+                                <TextField
+                                    label="Other Charges (TZS)"
+                                    type="text"
+                                    inputMode="decimal"
+                                    fullWidth
+                                    size="small"
+                                    sx={{ gridColumn: "1 / -1" }}
+                                    value={amountDisplayValue("otherCharges")}
+                                    onChange={(e) => handleAmountChange("otherCharges", e.target.value)}
+                                    onFocus={() => handleAmountFocus("otherCharges")}
+                                    onBlur={() => handleAmountBlur("otherCharges")}
+                                    error={!!errors.otherCharges}
+                                    helperText={errors.otherCharges}
+                                />
+                            </FormSection>
+
+                            {/* Not shown in the design's Edit Product mock (its sample content is
+                                illustrative only), but real required functionality - kept, grouped
+                                the same way as everything else instead of removed. */}
+                            <FormSection title="Terms & Conditions" grid={false}>
+                                <Stack spacing={2}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        <h6>Terms & Conditions</h6>
+                                        {form?.termsCondition?.length === 0 &&
+                                            <button className="custom-button" onClick={handleAddTerm}>+ Add Term</button>
+                                        }
+                                    </Stack>
+
+                                    <TermsBulkImport
+                                        existingCount={form.termsCondition.length}
+                                        onImport={(importedTerms) => {
+                                            setForm((prev) => ({ ...prev, termsCondition: importedTerms }));
+                                            // Clear any stale "At least one term is required" (and per-term)
+                                            // error left over from an earlier failed Save - the import just
+                                            // replaced the array these errors were about, so they no longer
+                                            // describe the current state.
+                                            setErrors((prev) => {
+                                                const { termsCondition, ...rest } = prev;
+                                                return rest;
+                                            });
+                                            toast.success(`Imported ${importedTerms.length} term(s)`);
+                                        }}
+                                    />
+
+                                    {form.termsCondition.map((term, index) => (
+                                        <>
+                                            <Stack direction="row" spacing={2}>
+                                                <TextField
+                                                    label="Term Number"
+                                                    fullWidth
+                                                    size="small"
+                                                    value={term.termNumber}
+                                                    error={!!errors?.termsCondition?.[index]?.termNumber}
+                                                    helperText={errors?.termsCondition?.[index]?.termNumber}
+                                                    onChange={(e) => handleTermChange(index, "termNumber", e.target.value)}
+                                                />
+                                                <TextField
+                                                    label="Effective Date"
+                                                    type="date"
+                                                    fullWidth
+                                                    size="small"
+                                                    InputLabelProps={{ shrink: true }}
+                                                    value={term.effectiveDate}
+                                                    error={!!errors?.termsCondition?.[index]?.effectiveDate}
+                                                    helperText={errors?.termsCondition?.[index]?.effectiveDate}
+                                                    onChange={(e) => handleTermChange(index, "effectiveDate", e.target.value)}
+                                                />
+                                            </Stack>
+
+                                            <TextField
+                                                label="Description"
+                                                fullWidth
+                                                multiline
+                                                rows={2}
+                                                size="small"
+                                                sx={{ mt: 1 }}
+                                                error={!!errors?.termsCondition?.[index]?.description}
+                                                helperText={errors?.termsCondition?.[index]?.description}
+                                                value={term.description}
+                                                onChange={(e) => handleTermChange(index, "description", e.target.value)}
+                                            />
+
+                                            <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
+                                                <DeleteOutline className="icon" sx={{ fontSize: 20 }} onClick={() => handleRemoveTerm(index)} />
+                                                {form?.termsCondition.length === index + 1 && (
+                                                    <button className="custom-button" onClick={handleAddTerm}>+ Add Term</button>
+                                                )}
+                                            </Stack>
+                                        </>
+                                    ))}
+                                    {/* Derived live from form.termsCondition rather than the stored `errors`
+                                        string - the array is the single source of truth (updated by both
+                                        "+ Add Term" and CSV import), so this can never go stale relative to it. */}
+                                    {form.termsCondition.length === 0 && (
+                                        <FormHelperText error>At least one term is required</FormHelperText>
+                                    )}
                                 </Stack>
+                            </FormSection>
 
-                                <TermsBulkImport
-                                    existingCount={form.termsCondition.length}
-                                    onImport={(importedTerms) => {
-                                        setForm((prev) => ({ ...prev, termsCondition: importedTerms }));
-                                        // Clear any stale "At least one term is required" (and per-term)
-                                        // error left over from an earlier failed Save - the import just
-                                        // replaced the array these errors were about, so they no longer
-                                        // describe the current state.
-                                        setErrors((prev) => {
-                                            const { termsCondition, ...rest } = prev;
-                                            return rest;
-                                        });
-                                        toast.success(`Imported ${importedTerms.length} term(s)`);
-                                    }}
-                                />
-
-                                {form.termsCondition.map((term, index) => (
-                                    <>
-                                        <Stack direction="row" spacing={2}>
-                                            <TextField
-                                                label="Term Number"
-                                                fullWidth
-                                                size="small"
-                                                value={term.termNumber}
-                                                error={!!errors?.termsCondition?.[index]?.termNumber}
-                                                helperText={errors?.termsCondition?.[index]?.termNumber}
-                                                onChange={(e) => handleTermChange(index, "termNumber", e.target.value)}
-                                            />
-                                            <TextField
-                                                label="Effective Date"
-                                                type="date"
-                                                fullWidth
-                                                size="small"
-                                                InputLabelProps={{ shrink: true }}
-                                                value={term.effectiveDate}
-                                                error={!!errors?.termsCondition?.[index]?.effectiveDate}
-                                                helperText={errors?.termsCondition?.[index]?.effectiveDate}
-                                                onChange={(e) => handleTermChange(index, "effectiveDate", e.target.value)}
-                                            />
-                                        </Stack>
-
-                                        <TextField
-                                            label="Description"
-                                            fullWidth
-                                            multiline
-                                            rows={2}
-                                            size="small"
-                                            sx={{ mt: 1 }}
-                                            error={!!errors?.termsCondition?.[index]?.description}
-                                            helperText={errors?.termsCondition?.[index]?.description}
-                                            value={term.description}
-                                            onChange={(e) => handleTermChange(index, "description", e.target.value)}
-                                        />
-
-                                        <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
-                                            <DeleteOutline className="icon" sx={{ fontSize: 20 }} onClick={() => handleRemoveTerm(index)} />
-                                            {form?.termsCondition.length === index + 1 && (
-                                                <button className="custom-button" onClick={handleAddTerm}>+ Add Term</button>
-                                            )}
-                                        </Stack>
-                                    </>
-                                ))}
-                                {/* Derived live from form.termsCondition rather than the stored `errors`
-                                    string - the array is the single source of truth (updated by both
-                                    "+ Add Term" and CSV import), so this can never go stale relative to it. */}
-                                {form.termsCondition.length === 0 && (
-                                    <FormHelperText error>At least one term is required</FormHelperText>
-                                )}
-                            </Stack>
-                            {/* Checkboxes */}
-                            <Stack direction="row" spacing={2}>
-                                <FormControlLabel
-                                    control={<Checkbox checked={form.forExecutive} onChange={(e) => handleFormChange("forExecutive", e.target.checked)} />}
-                                    label="For Executive"
-                                />
-                                <FormControlLabel
-                                    control={<Checkbox checked={form.shariaFacility} onChange={(e) => handleFormChange("shariaFacility", e.target.checked)} />}
-                                    label="Sharia Facility"
-                                />
-                            </Stack>
+                            <FormSection title="Eligibility" last>
+                                <Stack direction="row" spacing={2} sx={{ gridColumn: "1 / -1" }}>
+                                    <FormControlLabel
+                                        control={<Checkbox checked={form.forExecutive} onChange={(e) => handleFormChange("forExecutive", e.target.checked)} />}
+                                        label="For Executive"
+                                    />
+                                    <FormControlLabel
+                                        control={<Checkbox checked={form.shariaFacility} onChange={(e) => handleFormChange("shariaFacility", e.target.checked)} />}
+                                        label="Sharia Facility"
+                                    />
+                                </Stack>
+                            </FormSection>
                         </Stack>
                     </DialogContentText>
                 </DialogContent>
-                <DialogActions>
-                    <button className="custom-button" onClick={handleClose}>Cancel</button>
-                    <button className="custom-button" disabled={savingDraft} onClick={handleSaveDraft}>
+                <DialogActions sx={{ borderTop: '1px solid', borderColor: 'designBorder.subtle', p: '16px 24px' }}>
+                    <button className="custom-button-text" onClick={handleClose}>Cancel</button>
+                    <button className="custom-button-outline" disabled={savingDraft} onClick={handleSaveDraft}>
                         {savingDraft ? "Saving..." : "Save Draft"}
                     </button>
                     <button className="custom-button" onClick={handleSaveProduct}>{editMode ? "Save" : "Create"}</button>

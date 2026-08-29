@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Paper, Button, Box, Dialog, DialogTitle, DialogContent,
+  Paper, Button, Box, Chip, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, MenuItem, Typography,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
@@ -12,11 +12,41 @@ import TenantDetailDrawer, { shouldOpenOnboarding } from './TenantDetailDrawer';
 
 const STATUSES = ['draft', 'submitted', 'under_review', 'approved', 'active', 'rejected', 'suspended', 'disabled'];
 
+// Same statusPill token approach as the Product screens (Product.js's rowStatusChip /
+// ReviewProductModal.jsx's statusPillSx) - green for the two "in good standing" states,
+// red for the three rejected/blocked states, gray for everything still in flight.
+const TENANT_STATUS_PILL = {
+  active: 'green',
+  approved: 'green',
+  rejected: 'red',
+  suspended: 'red',
+  disabled: 'red',
+  draft: 'gray',
+  submitted: 'gray',
+  under_review: 'gray',
+};
+const statusPillSx = (status) => {
+  const pillKey = TENANT_STATUS_PILL[status] || 'gray';
+  return { bgcolor: `statusPill.${pillKey}.bg`, color: `statusPill.${pillKey}.text` };
+};
+
+function NoRowsOverlay() {
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.muted' }}>
+      <Box sx={{ fontSize: 24, mb: 1 }}>📁</Box>
+      <Typography sx={{ fontSize: 14, color: 'text.muted' }}>No FSPs match this filter</Typography>
+    </Box>
+  );
+}
+
 export default function TenantsList() {
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('submitted');
+  // Defaults to "active" rather than "submitted" - active tenants are the common case an
+  // admin lands on this page to find, and shouldn't take an extra click to see. "submitted"
+  // (tenants awaiting review) is still one filter selection away.
+  const [statusFilter, setStatusFilter] = useState('active');
   const [reviewOpen, setReviewOpen] = useState(null);
   const [reviewDecision, setReviewDecision] = useState('approve');
   const [reviewReason, setReviewReason] = useState('');
@@ -84,7 +114,13 @@ export default function TenantsList() {
     { field: 'tenantId', headerName: 'ID', width: 140 },
     { field: 'tenantName', headerName: 'Name', flex: 1 },
     { field: 'fspCode', headerName: 'FSP Code', width: 120 },
-    { field: 'status', headerName: 'Status', width: 130 },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 140,
+      sortable: false,
+      renderCell: (p) => <Chip size="small" label={p.value} sx={statusPillSx(p.value)} />,
+    },
     { field: 'contactEmail', headerName: 'Email', width: 200 },
     {
       field: 'actions',
@@ -114,17 +150,27 @@ export default function TenantsList() {
 
   return (
     <div className="p-3">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, alignItems: 'center' }}>
-        <Typography variant="h5">FSP Tenants</Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <TextField select size="small" label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Typography sx={{ fontSize: 22, fontWeight: 700, color: 'text.primary', letterSpacing: '-0.2px' }}>FSP Tenants</Typography>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          <TextField select size="small" label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} sx={{ minWidth: 160 }}>
             {STATUSES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </TextField>
-          <Button variant="contained" onClick={() => navigate('/onboarding')}>New FSP</Button>
+          <Button variant="contained" onClick={() => navigate('/onboarding')} sx={{ height: 38 }}>New FSP</Button>
         </Box>
       </Box>
       <Paper sx={{ height: 520 }}>
-        <DataGrid rows={rows} columns={columns} loading={loading} getRowId={(r) => r.tenantId} />
+        <DataGrid
+          rows={rows}
+          columns={columns}
+          loading={loading}
+          getRowId={(r) => r.tenantId}
+          components={{ NoRowsOverlay }}
+          sx={{
+            border: 0,
+            '& .MuiDataGrid-columnHeaders': { bgcolor: '#FAFBFC' },
+          }}
+        />
       </Paper>
 
       <Dialog open={Boolean(reviewOpen)} onClose={() => setReviewOpen(null)}>

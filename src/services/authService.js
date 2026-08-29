@@ -74,3 +74,18 @@ export async function changePassword(payload) {
   if (!data.success) throw new Error(data.message || 'Password change failed');
   return data;
 }
+
+// Backend always returns the same generic success message regardless of whether the email
+// is registered (avoids account enumeration) - this function just passes that message
+// through, it never resolves any different result for "email exists" vs "doesn't".
+export async function forgotPassword(email) {
+  const { data } = await postRequest(API.FORGOT_PASSWORD, { email });
+  if (!data.success) throw new Error(data.message || 'Request failed');
+  return data;
+}
+
+export async function resetPassword(token, newPassword) {
+  const { data } = await postRequest(API.RESET_PASSWORD, { token, newPassword });
+  if (!data.success) throw new Error(data.message || 'Password reset failed');
+  return data;
+}

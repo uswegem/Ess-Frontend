@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
+import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
-import Chip from '@mui/material/Chip';
 import SearchIcon from '@mui/icons-material/Search';
 
 // Page-local search bar for visual parity with the retired MiraAdmin layout. It has no
@@ -20,24 +20,47 @@ const PageSearchBar = ({ loanInputRef }) => {
   }, [loanInputRef]);
 
   return (
-    <TextField
-      fullWidth
-      placeholder="Search loans, applications..."
-      onFocus={() => loanInputRef?.current?.focus()}
-      InputProps={{
-        readOnly: true,
-        startAdornment: (
-          <InputAdornment position="start">
-            <SearchIcon fontSize="small" />
-          </InputAdornment>
-        ),
-        endAdornment: (
-          <InputAdornment position="end">
-            <Chip label="⌘K" size="small" variant="outlined" />
-          </InputAdornment>
-        ),
-      }}
-    />
+    <Box sx={{ position: 'relative' }}>
+      <TextField
+        fullWidth
+        placeholder="Search loans, applications..."
+        onFocus={() => loanInputRef?.current?.focus()}
+        InputProps={{
+          readOnly: true,
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon fontSize="small" sx={{ color: 'text.muted' }} />
+            </InputAdornment>
+          ),
+          sx: { borderRadius: '10px', pr: '108px' },
+        }}
+      />
+      {/* Decorative - same underlying action as focusing the field above (Loan Lookup's
+          Autocomplete does the actual filtering), just completing the design's visual
+          "Search" button. No new search logic. */}
+      <Box
+        component="button"
+        type="button"
+        onClick={() => loanInputRef?.current?.focus()}
+        sx={{
+          position: 'absolute',
+          right: 6,
+          top: 6,
+          bottom: 6,
+          px: 2,
+          borderRadius: '8px',
+          border: 'none',
+          bgcolor: 'primary.main',
+          color: '#fff',
+          fontWeight: 600,
+          fontSize: 13,
+          cursor: 'pointer',
+          '&:hover': { bgcolor: 'primary.dark' },
+        }}
+      >
+        Search
+      </Box>
+    </Box>
   );
 };
 

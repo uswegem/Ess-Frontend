@@ -5,7 +5,8 @@
 
 .PanelTopBar {
   background-color: #fff !important;
-  box-shadow: rgba(0, 0, 0, 0.02) 0px 1px 3px 0px, rgba(27, 31, 35, 0.15) 0px 0px 0px 1px !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid #EEF0F4;
 }
 
 a {
@@ -136,11 +137,59 @@ h2 {
   display: none;
 }
 
+/* Additive - design-handoff's outlined secondary button style (e.g. "Columns" next to a
+   solid-primary "Add Product"). Deliberately a new class, not a modification of
+   .custom-button above, so screens not yet in this redesign pass are unaffected. */
+.custom-button-outline {
+  appearance: none;
+  background-color: #fff;
+  border: 1px solid #D6DAE3;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #344054;
+  cursor: pointer;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  padding: 6px 16px;
+  transition: background-color 0.15s ease;
+}
+.custom-button-outline:hover {
+  background-color: #F7F8FB;
+}
+.custom-button-outline:disabled {
+  color: #98A2B3;
+  cursor: default;
+}
+
+/* Additive - design-handoff's transparent text-only button (e.g. modal "Cancel"). */
+.custom-button-text {
+  appearance: none;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  box-sizing: border-box;
+  color: #2A3A8F;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 16px;
+  transition: background-color 0.15s ease;
+}
+.custom-button-text:hover {
+  background-color: #F0F1F5;
+}
+
 
 .custom-paper{
   padding: 10px !important;
   height: 100vh !important;
-  box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px !important;
+  /* Was a box-shadow standing in as a fake 1px border (rgba(0,0,0,0.05) 0 0 0 1px) - now
+     redundant with theme.js's MuiPaper override, which already draws a real border
+     (#E5E8EF). Replaced with the design token's actual card shadow instead of double-drawing
+     a border via two different techniques. */
+  box-shadow: 0 1px 3px rgba(16,24,40,0.04) !important;
 }
 
 
