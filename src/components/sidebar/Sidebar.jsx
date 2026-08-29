@@ -45,6 +45,7 @@ const NAV_GROUPS = [
   {
     section: 'System',
     items: [
+      { to: '/miracore', label: 'MiraCore Provisioning', icon: AddBusinessOutlined, show: ({ isPlatformAdmin }) => isPlatformAdmin },
       { to: '/settings', label: 'Settings', icon: SettingsOutlined, show: ({ can, isPlatformAdmin }) => isPlatformAdmin || can('tenant:read') },
       { to: '/audit', label: 'Audit', icon: HistoryOutlined, show: ({ can }) => can('audit:read') },
     ],

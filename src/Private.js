@@ -10,6 +10,7 @@ const ROUTE_PERMISSIONS = {
   '/audit': 'audit:read',
   '/onboarding': null,
   '/tenants': null,
+  '/miracore': null,
 };
 
 function Private() {
@@ -28,7 +29,7 @@ function Private() {
 
   if (matched) {
     const [, permission] = matched;
-    if (path.startsWith('/onboarding') || path.startsWith('/tenants')) {
+    if (path.startsWith('/onboarding') || path.startsWith('/tenants') || path.startsWith('/miracore')) {
       if (!isPlatformAdmin) {
         return <Navigate to="/dashboard" replace />;
       }
