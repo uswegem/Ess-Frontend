@@ -16,6 +16,7 @@ const LoanDetail = lazy(() => import('./pages/loan/LoanDetail'));
 const NotificationManagement = lazy(() => import('./pages/notification/NotificationManagement'));
 const PendingResponsesManager = lazy(() => import('./pages/messages/PendingResponsesManager'));
 const ManualMessageTrigger = lazy(() => import('./pages/messages/ManualMessageTrigger'));
+const MiracoreProvisioning = lazy(() => import('./pages/miracore/MiracoreProvisioning'));
 
 const routes = [
   { path: '/dashboard', Component: Dashboard },
@@ -35,6 +36,7 @@ const routes = [
   { path: '/loan/:id', Component: LoanDetail },
   { path: '/messages/pending', Component: PendingResponsesManager },
   { path: '/messages/trigger', Component: ManualMessageTrigger },
+  { path: '/miracore', Component: MiracoreProvisioning },
 ];
 
 export default routes;

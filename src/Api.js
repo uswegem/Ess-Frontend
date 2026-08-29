@@ -70,6 +70,13 @@ const API = {
   MESSAGE_LOGS: '/messages/logs',
   messageResend: (messageId) => `/messages/${messageId}/resend`,
   suggestedMessages: (loanId) => `/loan-actions/${loanId}/suggested-messages`,
+
+  // MiraCore provisioning
+  MIRACORE_TENANTS: '/miracore/tenants',
+  miracoreTenant: (id) => `/miracore/tenants/${id}`,
+  miracoreProvision: (id) => `/miracore/tenants/${id}/provision`,
+  miracoreBootstrap: (id) => `/miracore/tenants/${id}/bootstrap`,
+  miracoreActivate: (id) => `/miracore/tenants/${id}/activate`,
 };
 
 export default API;
