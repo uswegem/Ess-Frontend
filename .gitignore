@@ -40,4 +40,4 @@ out/
 .DS_Store
 
 # Optional npm cache directory
-.npm
+.npm.claude/
