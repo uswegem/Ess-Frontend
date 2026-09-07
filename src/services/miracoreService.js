@@ -21,3 +21,8 @@ export const bootstrapMiracoreTenant = (tenantId, payload) =>
 
 export const activateMiracoreTenant = (tenantId) =>
   postRequest(API.miracoreActivate(tenantId), {}).then((r) => r.data);
+
+// Returns { tenantId, wasRenamed } — tenantId is the requested slug if free,
+// otherwise the next available variant (slug2, slug3, ...).
+export const checkMiracoreTenantId = (slug) =>
+  getRequest(API.MIRACORE_CHECK_TENANT_ID, { params: { slug } }).then((r) => r.data);

@@ -71,12 +71,14 @@ const API = {
   messageResend: (messageId) => `/messages/${messageId}/resend`,
   suggestedMessages: (loanId) => `/loan-actions/${loanId}/suggested-messages`,
 
-  // MiraCore provisioning
-  MIRACORE_TENANTS: '/miracore/tenants',
-  miracoreTenant: (id) => `/miracore/tenants/${id}`,
-  miracoreProvision: (id) => `/miracore/tenants/${id}/provision`,
-  miracoreBootstrap: (id) => `/miracore/tenants/${id}/bootstrap`,
-  miracoreActivate: (id) => `/miracore/tenants/${id}/activate`,
+  // MiraCore runtime-host provisioning (renamed from /miracore/* to
+  // /runtime-provisioning/* on the backend — see docs/RUNTIME_PROVISIONING.md)
+  MIRACORE_TENANTS: '/runtime-provisioning/tenants',
+  MIRACORE_CHECK_TENANT_ID: '/runtime-provisioning/tenants/check-tenant-id',
+  miracoreTenant: (id) => `/runtime-provisioning/tenants/${id}`,
+  miracoreProvision: (id) => `/runtime-provisioning/tenants/${id}/provision`,
+  miracoreBootstrap: (id) => `/runtime-provisioning/tenants/${id}/bootstrap`,
+  miracoreActivate: (id) => `/runtime-provisioning/tenants/${id}/activate`,
 };
 
 export default API;

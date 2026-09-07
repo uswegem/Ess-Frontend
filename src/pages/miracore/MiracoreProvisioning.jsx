@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Paper, Button, Box, Chip, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, Typography, Grid, CircularProgress,
+  DialogActions, TextField, Typography, Grid, CircularProgress, Divider,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { toast } from 'react-toastify';
@@ -11,6 +11,7 @@ import {
   provisionMiracoreTenant,
   bootstrapMiracoreTenant,
   activateMiracoreTenant,
+  checkMiracoreTenantId,
 } from '../../services/miracoreService';
 
 const MIRACORE_STATUS_PILL = {
@@ -39,6 +40,28 @@ function NoRowsOverlay() {
   );
 }
 
+// First-significant-word slug, matching the example: "Madaba Microfinance" -> "madaba".
+// Falls back to a condensed full-name slug if the first word alone isn't usable
+// (e.g. too short, or entirely non-alphanumeric) rather than producing an empty id.
+function slugifyTenantName(tenantName) {
+  const words = String(tenantName || '')
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => w.replace(/[^a-z0-9]/g, ''))
+    .filter(Boolean);
+
+  const firstWord = words[0] || '';
+  if (firstWord.length >= 3) return firstWord;
+
+  const condensed = words.join('').slice(0, 30);
+  return condensed || 'tenant';
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Generic E.164-ish check (optional leading +, 8-15 digits) — not restricted
+// to Tanzania (+255) even though that's the common case here.
+const PHONE_PATTERN = /^\+?[0-9]{8,15}$/;
+
 const initialFormState = {
   tenantId: '',
   tenantName: '',
@@ -53,7 +76,17 @@ const initialFormState = {
   emailEnabled: true,
   smsEnabled: true,
   otpEnabled: true,
+  contactFirstName: '',
+  contactSurname: '',
+  contactEmail: '',
+  contactPhone: '',
 };
+
+// Tracks which auto-generated fields are still "auto" (safe to overwrite on
+// the next Tenant Name blur) vs. manually overridden by the admin. Every
+// field starts auto-managed; editing one directly takes it out of auto mode
+// so the admin's override is never silently clobbered by a later blur.
+const initialAutoState = { tenantId: true, databaseName: true, schemaName: true };
 
 export default function MiracoreProvisioning() {
   const [rows, setRows] = useState([]);
@@ -61,6 +94,8 @@ export default function MiracoreProvisioning() {
   const [createOpen, setCreateOpen] = useState(false);
   const [bootstrapOpen, setBootstrapOpen] = useState(null);
   const [formData, setFormData] = useState(initialFormState);
+  const [autoFields, setAutoFields] = useState(initialAutoState);
+  const [formErrors, setFormErrors] = useState({});
   const [bootstrapData, setBootstrapData] = useState({
     adminUsername: '',
     adminEmail: '',
@@ -92,16 +127,90 @@ export default function MiracoreProvisioning() {
 
   useEffect(() => { fetchTenants(); }, [fetchTenants]);
 
+  // Auto-generates Tenant ID / Database Name / Schema Name from Tenant Name
+  // when the Tenant Name field loses focus. Only overwrites fields still in
+  // "auto" mode — an admin who has already typed their own Tenant ID (etc.)
+  // keeps their value even if they go back and tweak Tenant Name afterward.
+  const handleTenantNameBlur = async () => {
+    if (!formData.tenantName.trim()) return;
+    if (!autoFields.tenantId && !autoFields.databaseName && !autoFields.schemaName) return;
+
+    const baseSlug = slugifyTenantName(formData.tenantName);
+
+    let finalTenantId = baseSlug;
+    try {
+      const result = await checkMiracoreTenantId(baseSlug);
+      finalTenantId = result.data?.tenantId || baseSlug;
+      if (result.data?.wasRenamed) {
+        toast.info(`Tenant ID "${baseSlug}" is already in use — using "${finalTenantId}" instead.`);
+      }
+    } catch (err) {
+      // Uniqueness check is a convenience, not a hard gate — the create
+      // endpoint re-checks and auto-renames on collision as a safety net
+      // regardless, so fall back to the plain slug if the check itself fails.
+      finalTenantId = baseSlug;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      tenantId: autoFields.tenantId ? finalTenantId : prev.tenantId,
+      // Matches this form's existing Database Name / Schema Name pattern
+      // (both derived as <tenant_id>_db).
+      databaseName: autoFields.databaseName ? `${finalTenantId}_db` : prev.databaseName,
+      schemaName: autoFields.schemaName ? `${finalTenantId}_db` : prev.schemaName,
+    }));
+  };
+
+  // Any manual edit to an auto-generated field takes it out of auto mode,
+  // so a later Tenant Name blur won't overwrite the admin's own value.
+  const handleAutoFieldChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setAutoFields((prev) => ({ ...prev, [field]: false }));
+  };
+
+  const resetCreateForm = () => {
+    setFormData(initialFormState);
+    setAutoFields(initialAutoState);
+    setFormErrors({});
+  };
+
+  const validateContactFields = () => {
+    const errors = {};
+    if (!formData.contactFirstName.trim()) errors.contactFirstName = 'First name is required.';
+    if (!formData.contactSurname.trim()) errors.contactSurname = 'Surname is required.';
+    if (!formData.contactEmail.trim()) {
+      errors.contactEmail = 'Email address is required.';
+    } else if (!EMAIL_PATTERN.test(formData.contactEmail.trim())) {
+      errors.contactEmail = 'Enter a valid email address.';
+    }
+    if (!formData.contactPhone.trim()) {
+      errors.contactPhone = 'Mobile phone number is required.';
+    } else if (!PHONE_PATTERN.test(formData.contactPhone.trim())) {
+      errors.contactPhone = 'Enter a valid phone number (e.g. +255712345678).';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleCreate = async () => {
+    if (!validateContactFields()) {
+      toast.error('Please fix the highlighted contact fields.');
+      return;
+    }
+
     try {
       setProcessing(true);
-      await createMiracoreTenant({
+      const result = await createMiracoreTenant({
         tenantId: formData.tenantId,
         tenantName: formData.tenantName,
         runtimeHost: formData.runtimeHost,
         runtimePort: formData.runtimePort,
         databaseName: formData.databaseName,
         schemaName: formData.schemaName,
+        contactFirstName: formData.contactFirstName,
+        contactSurname: formData.contactSurname,
+        contactEmail: formData.contactEmail,
+        contactPhone: formData.contactPhone,
         appConfig: {
           defaultCurrency: formData.defaultCurrency,
           emailProvider: formData.emailProvider,
@@ -114,9 +223,18 @@ export default function MiracoreProvisioning() {
           otpEnabled: formData.otpEnabled,
         },
       });
-      toast.success('MiraCore tenant created');
+
+      // Safety-net collision handling can also trigger server-side (e.g. a
+      // race with another admin submitting the same slug) — surface it the
+      // same way the client-side check does, rather than silently renaming.
+      const assignedTenantId = result.data?.tenant?.tenantId;
+      if (assignedTenantId && assignedTenantId !== formData.tenantId) {
+        toast.info(`Tenant ID "${formData.tenantId}" was already taken — created as "${assignedTenantId}" instead.`);
+      }
+
+      toast.success('MiraCore tenant created. A confirmation email has been sent to the contact address.');
       setCreateOpen(false);
-      setFormData(initialFormState);
+      resetCreateForm();
       fetchTenants();
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
@@ -141,6 +259,12 @@ export default function MiracoreProvisioning() {
   const handleBootstrap = async () => {
     try {
       setProcessing(true);
+      // NOTE: bootstrap currently returns 501 Not Implemented on the backend
+      // — Liquibase migrations + fineract_tenants registration aren't built
+      // yet, so there's no real admin user or working login to produce.
+      // See TODO(tenant-ready-email) in provisioningTenantService.js for
+      // where the "tenant ready" email (with login credentials + URL) is
+      // meant to fire once this is real.
       await bootstrapMiracoreTenant(bootstrapOpen.tenantId, bootstrapData);
       toast.success('Bootstrap completed');
       setBootstrapOpen(null);
@@ -258,19 +382,22 @@ export default function MiracoreProvisioning() {
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Tenant ID"
-                value={formData.tenantId}
-                onChange={(e) => setFormData({ ...formData, tenantId: e.target.value })}
+                label="Tenant Name"
+                value={formData.tenantName}
+                onChange={(e) => setFormData({ ...formData, tenantName: e.target.value })}
+                onBlur={handleTenantNameBlur}
                 required
+                helperText="Tenant ID, Database Name, and Schema Name are auto-generated from this."
               />
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Tenant Name"
-                value={formData.tenantName}
-                onChange={(e) => setFormData({ ...formData, tenantName: e.target.value })}
+                label="Tenant ID"
+                value={formData.tenantId}
+                onChange={(e) => handleAutoFieldChange('tenantId', e.target.value)}
                 required
+                helperText={autoFields.tenantId ? 'Auto-generated — edit to override.' : 'Manually set.'}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -288,7 +415,7 @@ export default function MiracoreProvisioning() {
                 label="Runtime Port"
                 type="number"
                 value={formData.runtimePort}
-                onChange={(e) => setFormData({ ...formData, runtimePort: parseInt(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, runtimePort: parseInt(e.target.value, 10) })}
                 required
               />
             </Grid>
@@ -297,8 +424,9 @@ export default function MiracoreProvisioning() {
                 fullWidth
                 label="Database Name"
                 value={formData.databaseName}
-                onChange={(e) => setFormData({ ...formData, databaseName: e.target.value })}
+                onChange={(e) => handleAutoFieldChange('databaseName', e.target.value)}
                 required
+                helperText={autoFields.databaseName ? 'Auto-generated — edit to override.' : 'Manually set.'}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -306,8 +434,9 @@ export default function MiracoreProvisioning() {
                 fullWidth
                 label="Schema Name"
                 value={formData.schemaName}
-                onChange={(e) => setFormData({ ...formData, schemaName: e.target.value })}
+                onChange={(e) => handleAutoFieldChange('schemaName', e.target.value)}
                 required
+                helperText={autoFields.schemaName ? 'Auto-generated — edit to override.' : 'Manually set.'}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -355,10 +484,60 @@ export default function MiracoreProvisioning() {
                 <option value="sms">SMS</option>
               </TextField>
             </Grid>
+
+            <Grid item xs={12}>
+              <Divider sx={{ my: 1 }} />
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>Contact Details (MFI Onboarding)</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="First Name"
+                value={formData.contactFirstName}
+                onChange={(e) => setFormData({ ...formData, contactFirstName: e.target.value })}
+                required
+                error={Boolean(formErrors.contactFirstName)}
+                helperText={formErrors.contactFirstName}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Surname"
+                value={formData.contactSurname}
+                onChange={(e) => setFormData({ ...formData, contactSurname: e.target.value })}
+                required
+                error={Boolean(formErrors.contactSurname)}
+                helperText={formErrors.contactSurname}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Email Address"
+                type="email"
+                value={formData.contactEmail}
+                onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                required
+                error={Boolean(formErrors.contactEmail)}
+                helperText={formErrors.contactEmail || 'Receives the request confirmation, and later the login details.'}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Mobile Phone"
+                value={formData.contactPhone}
+                onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                required
+                error={Boolean(formErrors.contactPhone)}
+                helperText={formErrors.contactPhone || 'e.g. +255712345678'}
+              />
+            </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setCreateOpen(false)} disabled={processing}>Cancel</Button>
+          <Button onClick={() => { setCreateOpen(false); resetCreateForm(); }} disabled={processing}>Cancel</Button>
           <Button onClick={handleCreate} variant="contained" disabled={processing}>
             {processing ? <CircularProgress size={20} /> : 'Create'}
           </Button>
