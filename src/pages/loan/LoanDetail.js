@@ -175,11 +175,21 @@ const LoanDetail = () => {
           <Paper className="p-3 mb-2">
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>Loan Information</Typography>
             <InfoRow label="Requested Amount" value={formatAmountForRow(loan.requestedAmount ?? loanData.requestedAmount)} />
+            <InfoRow label="Insurance Premium" value={formatAmountForRow(loanData.insurance)} />
+            <InfoRow label="Processing Fee" value={formatAmountForRow(loanData.processingFee)} />
+            <InfoRow label="Other Charges" value={formatAmountForRow(loanData.otherCharges)} />
+            <InfoRow
+              label="Take Home"
+              value={formatAmountForRow(
+                Number(loan.requestedAmount ?? loanData.requestedAmount ?? 0)
+                  - Number(loanData.insurance || 0)
+                  - Number(loanData.processingFee || 0)
+                  - Number(loanData.otherCharges || 0)
+              )}
+            />
             <InfoRow label="Product Code" value={loan.productCode ?? loanData.productCode} />
             <InfoRow label="Tenure" value={loan.tenure ?? loanData.tenure} />
             <InfoRow label="Total Interest Amount" value={formatAmountForRow(loanData.interestRate ?? loanData.annualInterestRate)} />
-            <InfoRow label="Total Processing Fee" value={formatAmountForRow(loanData.processingFee)} />
-            <InfoRow label="Total Insurance Premium" value={formatAmountForRow(loanData.insurance)} />
             <InfoRow
               label="Total Amount to Pay"
               value={formatAmountForRow(
