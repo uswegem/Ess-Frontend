@@ -153,6 +153,10 @@ const METRIC_CONFIG = {
   },
   'interest-income': {
     title: 'Interest Income This Month',
+    // Lifetime accrued interest per loan (Fineract's interestCharged - booked/accrued, not
+    // interestPaid), same as the summary card it backs - not actually scoped to the date range
+    // below, same caveat as Collection Rate's own note elsewhere on this dashboard.
+    note: 'Accrued interest to date per loan (lifetime) - not scoped to the date range below.',
     columns: [
       dateColumn('date', 'Date', 0.7),
       { field: 'loanAccountNo', headerName: 'Loan Account', flex: 1 },
@@ -258,8 +262,8 @@ export default function DashboardDetail() {
           </Tooltip>
           <Box>
             <Typography variant="h5">{config.title}</Typography>
-            <Typography variant="caption" color="text.secondary">
-              {storedSelection.preset}: {range.from} to {range.to}
+            <Typography variant="caption" color="text.secondary" display="block">
+              {config.note || `${storedSelection.preset}: ${range.from} to ${range.to}`}
             </Typography>
           </Box>
         </Box>
