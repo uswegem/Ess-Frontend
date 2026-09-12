@@ -302,10 +302,13 @@ const Product = () => {
 
     const fetchDrafts = useCallback(async () => {
         try {
-            // No `active` param here - drafts should surface regardless of isActive so a
-            // draft that was previously soft-deleted (isActive: false) is still reachable
-            // from the list instead of being invisible everywhere.
-            const result = await getRequest(API.PRODUCTS, { params: { status: "draft" } });
+            // `active: true` excludes discarded drafts (Discard soft-deletes via isActive:
+            // false, same mechanism as Delete elsewhere in this table). Discard now has its
+            // own confirm dialog and is a deliberate action, not an accidental single click -
+            // once confirmed, the draft should actually disappear from this list rather than
+            // reappear right after, which is what happened while this endpoint returned drafts
+            // regardless of isActive.
+            const result = await getRequest(API.PRODUCTS, { params: { status: "draft", active: true } });
             const { success, data } = result.data;
             if (success) setDrafts(data?.products || []);
         } catch (err) {
@@ -930,6 +933,7 @@ const Product = () => {
                     return (
                         <div className="d-flex justify-content-center gap-2 align-items-center">
                             {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "#98A2B3", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
+                            {renderActionIcon(DeleteOutline, { row, color: "#B42318", titleAccess: "Delete", onClick: () => openDeleteDialog(row.id, row.name) })}
                             {renderActionIcon(PowerSettingsNewOutlined, { row, color: "error.main", titleAccess: "Decommission", onClick: () => openDecommissionDialog(row.id) })}
                         </div>
                     );
