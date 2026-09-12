@@ -95,8 +95,11 @@ export default function Dashboard() {
   const { tenantId } = useActiveTenant();
   const { isPlatformAdmin } = usePermissions();
   const [overview, setOverview] = useState(null);
+  const [overviewError, setOverviewError] = useState(null);
   const [activity, setActivity] = useState([]);
+  const [activityError, setActivityError] = useState(null);
   const [pendingMessages, setPendingMessages] = useState(0);
+  const [messagesError, setMessagesError] = useState(null);
   const [integrationHealth, setIntegrationHealth] = useState(null);
   const [apiKeyStats, setApiKeyStats] = useState({ total: 0, totalUsage: 0, active: 0 });
   const [loading, setLoading] = useState(true);
@@ -116,7 +119,12 @@ export default function Dashboard() {
         const cacheKey = `dashboard-overview-${tenantId || 'platform'}-${range.from}-${range.to}`;
         let ov = getCached(cacheKey);
 
-        const coreResults = await Promise.all([
+        // allSettled rather than all: these three are independent sections of the page, so one
+        // failing (e.g. activity's populate() erroring server-side) shouldn't prevent the other
+        // two - which may have genuinely succeeded - from ever reaching page state. Each is
+        // handled on its own below; a failure sets that section's own error flag rather than
+        // leaving the whole dashboard blank.
+        const [ovResult, actResult, msgResult] = await Promise.allSettled([
           ov ? Promise.resolve(ov) : getDashboardOverview(params).then((r) => {
             setCached(cacheKey, r, DASHBOARD_CACHE_TTL_MS);
             return r;
@@ -125,10 +133,26 @@ export default function Dashboard() {
           getDashboardMessages(params),
         ]);
 
-        const [ovRes, act, msg] = coreResults;
-        setOverview(ovRes.data);
-        setActivity(act.data?.logs || []);
-        setPendingMessages(msg.data?.pendingCount || 0);
+        if (ovResult.status === 'fulfilled') {
+          setOverview(ovResult.value.data);
+          setOverviewError(null);
+        } else {
+          setOverviewError(ovResult.reason?.response?.data?.message || ovResult.reason?.message || 'Failed to load');
+        }
+
+        if (actResult.status === 'fulfilled') {
+          setActivity(actResult.value.data?.logs || []);
+          setActivityError(null);
+        } else {
+          setActivityError(actResult.reason?.response?.data?.message || actResult.reason?.message || 'Failed to load');
+        }
+
+        if (msgResult.status === 'fulfilled') {
+          setPendingMessages(msgResult.value.data?.pendingCount || 0);
+          setMessagesError(null);
+        } else {
+          setMessagesError(msgResult.reason?.response?.data?.message || msgResult.reason?.message || 'Failed to load');
+        }
 
         if (tenantId) {
           const [healthResult, keysResult] = await Promise.allSettled([
@@ -203,6 +227,16 @@ export default function Dashboard() {
           }}
         />
       </Box>
+
+      {/* Overview feeds MiraCore Summary, ESS Summary, and both charts below - one banner here
+          rather than a separate error label on every card those numbers land in. */}
+      {overviewError && (
+        <Paper sx={{ p: 2, mb: 2, bgcolor: '#FEF2F2', border: '1px solid', borderColor: 'error.light' }}>
+          <Typography variant="body2" color="error.dark">
+            Summary figures couldn't be loaded ({overviewError}). The rest of the dashboard below is unaffected.
+          </Typography>
+        </Paper>
+      )}
 
       {/* MiraCore Summary - Fineract-sourced loan-book health */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
@@ -373,13 +407,20 @@ export default function Dashboard() {
           // count for the tenant - an application-pipeline outcome metric, not a message
           // metric. Relabeled to avoid the two being mistaken for the same figure at a glance.
           { title: 'Application Pipeline Success Rate %', value: kpis.successRate ?? 0 },
-          { title: 'Pending Messages', value: pendingMessages },
+          // Shows "—" rather than 0 when messagesError is set - 0 would misleadingly read as
+          // "no pending messages" rather than "couldn't check".
+          { title: 'Pending Messages', value: messagesError ? '—' : pendingMessages, error: messagesError },
         ].map((item) => (
           <div className="col-md-6 col-lg-4 mt-2" key={item.title}>
             <Card>
               <CardContent>
                 <Typography color="text.secondary" variant="body2">{item.title}</Typography>
                 <Typography variant="h4">{item.value}</Typography>
+                {item.error && (
+                  <Typography color="error.main" variant="caption" display="block" sx={{ mt: 0.5 }}>
+                    Couldn't load
+                  </Typography>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -464,7 +505,16 @@ export default function Dashboard() {
                 <TableCell>{new Date(log.createdAt).toLocaleString()}</TableCell>
               </TableRow>
             ))}
-            {!activity.length && (
+            {!activity.length && activityError && (
+              <TableRow>
+                <TableCell colSpan={4}>
+                  <Typography color="error.main" variant="body2">
+                    Recent activity couldn't be loaded ({activityError}).
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
+            {!activity.length && !activityError && (
               <TableRow><TableCell colSpan={4}>No recent activity</TableCell></TableRow>
             )}
           </TableBody>
