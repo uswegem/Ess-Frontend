@@ -23,6 +23,7 @@ node_modules/
 # Next.js build output
 build/
 out/
+build.bak.*/
 
 # Production
 .env
