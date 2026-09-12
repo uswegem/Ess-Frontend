@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   Paper, Button, Box, Chip, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, Typography, Grid, CircularProgress, Divider,
+  Tooltip,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { toast } from 'react-toastify';
@@ -14,20 +15,31 @@ import {
   checkMiracoreTenantId,
 } from '../../services/miracoreService';
 
+// Must match ProvisioningTenant.status exactly (see backend model) — this
+// list drifting from the backend enum is what silently broke every action
+// button before (the UI was written against an earlier, different set of
+// status names that the backend never actually used).
 const MIRACORE_STATUS_PILL = {
   active: 'green',
-  provisioned: 'green',
-  bootstrapped: 'green',
-  pending: 'gray',
-  created: 'gray',
+  ready: 'green',
+  draft: 'gray',
   provisioning: 'gray',
-  bootstrapping: 'gray',
+  inactive: 'gray',
   failed: 'red',
-  error: 'red',
 };
 
-const statusPillSx = (status) => {
-  const pillKey = MIRACORE_STATUS_PILL[status] || 'gray';
+// Must match ProvisioningTenant.bootstrap.status exactly (see backend
+// model / provisioningTenantService.js) — same reasoning as above.
+const BOOTSTRAP_STATUS_PILL = {
+  completed: 'green',
+  awaiting_restart: 'gray',
+  in_progress: 'gray',
+  not_started: 'gray',
+  failed: 'red',
+};
+
+const statusPillSx = (status, map = MIRACORE_STATUS_PILL) => {
+  const pillKey = map[status] || 'gray';
   return { bgcolor: `statusPill.${pillKey}.bg`, color: `statusPill.${pillKey}.text` };
 };
 
@@ -96,11 +108,6 @@ export default function MiracoreProvisioning() {
   const [formData, setFormData] = useState(initialFormState);
   const [autoFields, setAutoFields] = useState(initialAutoState);
   const [formErrors, setFormErrors] = useState({});
-  const [bootstrapData, setBootstrapData] = useState({
-    adminUsername: '',
-    adminEmail: '',
-    adminPassword: '',
-  });
   const [processing, setProcessing] = useState(false);
 
   const fetchTenants = useCallback(async () => {
@@ -115,7 +122,11 @@ export default function MiracoreProvisioning() {
         runtimePort: t.runtimePort,
         databaseName: t.databaseName,
         status: t.status,
-        bootstrapStatus: t.bootstrap?.status || 'pending',
+        // 'not_started' matches the backend's own default (bootstrap.status
+        // on ProvisioningTenant) — not a UI-invented placeholder.
+        bootstrapStatus: t.bootstrap?.status || 'not_started',
+        provisioningError: t.provisioningJob?.lastError || null,
+        bootstrapError: t.bootstrap?.lastError || null,
       }));
       setRows(tenants);
     } catch (err) {
@@ -256,19 +267,19 @@ export default function MiracoreProvisioning() {
     }
   };
 
-  const handleBootstrap = async () => {
+  // Bootstrap takes no input from the admin — it registers the tenant with
+  // Fineract's own control-plane DB over SSH; Fineract seeds its own
+  // default admin user automatically on its next restart. There used to be
+  // a form here asking for an admin username/email/password, but the
+  // backend has never read those fields (they're not part of how bootstrap
+  // actually works) — removed rather than leaving a dialog that implies
+  // the admin has a say in credentials that Fineract generates itself.
+  const handleBootstrap = async (tenantId) => {
     try {
       setProcessing(true);
-      // NOTE: bootstrap currently returns 501 Not Implemented on the backend
-      // — Liquibase migrations + fineract_tenants registration aren't built
-      // yet, so there's no real admin user or working login to produce.
-      // See TODO(tenant-ready-email) in provisioningTenantService.js for
-      // where the "tenant ready" email (with login credentials + URL) is
-      // meant to fire once this is real.
-      await bootstrapMiracoreTenant(bootstrapOpen.tenantId, bootstrapData);
-      toast.success('Bootstrap completed');
+      await bootstrapMiracoreTenant(tenantId);
+      toast.success('Tenant registered with Fineract — a runtime host restart is still needed before it is live.');
       setBootstrapOpen(null);
-      setBootstrapData({ adminUsername: '', adminEmail: '', adminPassword: '' });
       fetchTenants();
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
@@ -298,58 +309,100 @@ export default function MiracoreProvisioning() {
     {
       field: 'status',
       headerName: 'Status',
-      width: 120,
-      renderCell: (p) => <Chip size="small" label={p.value} sx={statusPillSx(p.value)} />,
+      width: 130,
+      renderCell: (p) => {
+        const chip = <Chip size="small" label={p.value} sx={statusPillSx(p.value)} />;
+        // Surfaces provisioningJob.lastError, which the backend already
+        // tracks but the UI previously never showed anywhere — a failed
+        // provision was only diagnosable from server logs before this.
+        return p.row.provisioningError
+          ? <Tooltip title={p.row.provisioningError}>{chip}</Tooltip>
+          : chip;
+      },
     },
     {
       field: 'bootstrapStatus',
       headerName: 'Bootstrap',
-      width: 120,
-      renderCell: (p) => <Chip size="small" label={p.value} sx={statusPillSx(p.value)} />,
+      width: 150,
+      renderCell: (p) => {
+        const label = p.value === 'awaiting_restart' ? 'Awaiting restart' : p.value;
+        const chip = <Chip size="small" label={label} sx={statusPillSx(p.value, BOOTSTRAP_STATUS_PILL)} />;
+        return p.row.bootstrapError
+          ? <Tooltip title={p.row.bootstrapError}>{chip}</Tooltip>
+          : chip;
+      },
     },
     {
       field: 'actions',
       headerName: 'Actions',
       width: 360,
-      renderCell: (p) => (
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {p.row.status === 'created' && (
-            <Button
-              size="small"
-              variant="contained"
-              onClick={() => handleProvision(p.row.tenantId)}
-              disabled={processing}
-            >
-              Provision
-            </Button>
-          )}
-          {p.row.status === 'provisioned' && p.row.bootstrapStatus === 'pending' && (
-            <Button
-              size="small"
-              variant="contained"
-              color="primary"
-              onClick={() => setBootstrapOpen(p.row)}
-              disabled={processing}
-            >
-              Bootstrap
-            </Button>
-          )}
-          {p.row.bootstrapStatus === 'completed' && p.row.status !== 'active' && (
-            <Button
-              size="small"
-              variant="contained"
-              color="success"
-              onClick={() => handleActivate(p.row.tenantId)}
-              disabled={processing}
-            >
-              Activate
-            </Button>
-          )}
-          {p.row.status === 'active' && (
-            <Chip size="small" label="✓ Active" color="success" />
-          )}
-        </Box>
-      ),
+      // Every branch here is keyed off the backend's real status/
+      // bootstrap.status values (ProvisioningTenant model,
+      // provisioningTenantService.js) — not placeholder names invented on
+      // the frontend, which is what silently broke every button before.
+      renderCell: (p) => {
+        const { status, bootstrapStatus } = p.row;
+
+        if (status === 'active') {
+          return <Chip size="small" label="✓ Active" color="success" />;
+        }
+
+        return (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            {status === 'draft' && (
+              <Button
+                size="small"
+                variant="contained"
+                onClick={() => handleProvision(p.row.tenantId)}
+                disabled={processing}
+              >
+                Provision
+              </Button>
+            )}
+            {status === 'failed' && (
+              <Button
+                size="small"
+                variant="contained"
+                color="warning"
+                onClick={() => handleProvision(p.row.tenantId)}
+                disabled={processing}
+              >
+                Retry Provision
+              </Button>
+            )}
+            {status === 'ready' && (bootstrapStatus === 'not_started' || bootstrapStatus === 'failed') && (
+              <Button
+                size="small"
+                variant="contained"
+                color="primary"
+                onClick={() => setBootstrapOpen(p.row)}
+                disabled={processing}
+              >
+                {bootstrapStatus === 'failed' ? 'Retry Bootstrap' : 'Bootstrap'}
+              </Button>
+            )}
+            {status === 'ready' && bootstrapStatus === 'in_progress' && (
+              <Chip size="small" label="Bootstrapping…" sx={statusPillSx('in_progress', BOOTSTRAP_STATUS_PILL)} />
+            )}
+            {status === 'ready' && bootstrapStatus === 'awaiting_restart' && (
+              <Tooltip title="Registered with Fineract — an admin still needs to restart Fineract on the runtime host before this tenant is live.">
+                <Chip size="small" label="Awaiting runtime restart" sx={statusPillSx('awaiting_restart', BOOTSTRAP_STATUS_PILL)} />
+              </Tooltip>
+            )}
+            {status === 'ready' && bootstrapStatus === 'completed' && (
+              <Button
+                size="small"
+                variant="contained"
+                color="success"
+                onClick={() => handleActivate(p.row.tenantId)}
+                disabled={processing}
+              >
+                Activate
+              </Button>
+            )}
+          </Box>
+        );
+      },
     },
   ];
 
@@ -397,7 +450,9 @@ export default function MiracoreProvisioning() {
                 value={formData.tenantId}
                 onChange={(e) => handleAutoFieldChange('tenantId', e.target.value)}
                 required
-                helperText={autoFields.tenantId ? 'Auto-generated — edit to override.' : 'Manually set.'}
+                helperText={autoFields.tenantId
+                  ? 'Auto-generated — edit to override. Must be lowercase letters/numbers/underscore, e.g. madaba.'
+                  : 'Manually set. Must be lowercase letters/numbers/underscore, e.g. madaba (not the full tenant name).'}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -544,46 +599,27 @@ export default function MiracoreProvisioning() {
         </DialogActions>
       </Dialog>
 
-      {/* Bootstrap Dialog */}
+      {/* Bootstrap Dialog — no admin credential fields: Fineract seeds its
+          own default admin user automatically once the runtime host is
+          restarted, so there is nothing for the operator to fill in here. */}
       <Dialog open={!!bootstrapOpen} onClose={() => !processing && setBootstrapOpen(null)} maxWidth="sm" fullWidth>
         <DialogTitle>Bootstrap Tenant: {bootstrapOpen?.tenantName}</DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Admin Username"
-                value={bootstrapData.adminUsername}
-                onChange={(e) => setBootstrapData({ ...bootstrapData, adminUsername: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Admin Email"
-                type="email"
-                value={bootstrapData.adminEmail}
-                onChange={(e) => setBootstrapData({ ...bootstrapData, adminEmail: e.target.value })}
-                required
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Admin Password"
-                type="password"
-                value={bootstrapData.adminPassword}
-                onChange={(e) => setBootstrapData({ ...bootstrapData, adminPassword: e.target.value })}
-                required
-              />
-            </Grid>
-          </Grid>
+          <Typography sx={{ mt: 1 }}>
+            This registers <strong>{bootstrapOpen?.tenantId}</strong> with Fineract's own tenant
+            control-plane database on the runtime host.
+          </Typography>
+          <Typography sx={{ mt: 2, color: 'text.secondary' }}>
+            A runtime host restart is still required afterward before the tenant is actually
+            live — Fineract only applies the tenant's database schema and creates its default
+            admin login the next time it starts up. That restart is a separate, manual step and
+            is not triggered by this action.
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setBootstrapOpen(null)} disabled={processing}>Cancel</Button>
-          <Button onClick={handleBootstrap} variant="contained" disabled={processing}>
-            {processing ? <CircularProgress size={20} /> : 'Bootstrap'}
+          <Button onClick={() => handleBootstrap(bootstrapOpen.tenantId)} variant="contained" disabled={processing}>
+            {processing ? <CircularProgress size={20} /> : 'Register Tenant'}
           </Button>
         </DialogActions>
       </Dialog>
