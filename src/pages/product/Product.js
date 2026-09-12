@@ -160,6 +160,9 @@ const Product = () => {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [deleting, setDeleting] = useState(false);
+    const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
+    const [discardTarget, setDiscardTarget] = useState(null);
+    const [discarding, setDiscarding] = useState(false);
     const [selectedProductCodes, setSelectedProductCodes] = useState([]);
     const [decommissionDialogOpen, setDecommissionDialogOpen] = useState(false);
     const [decommissioning, setDecommissioning] = useState(false);
@@ -349,18 +352,32 @@ const Product = () => {
         openEditDialog(productId);
     };
 
-    const handleDiscardDraft = async (productId) => {
+    // Discarding a draft is destructive (same delete endpoint active-product Delete uses),
+    // so it gets the same confirm-dialog guard Delete already has, rather than firing on
+    // a single click the way the old text button did.
+    const openDiscardDialog = (productId) => {
+        setDiscardTarget({ id: productId });
+        setDiscardDialogOpen(true);
+    };
+
+    const handleConfirmDiscard = async () => {
+        if (!discardTarget) return;
+        setDiscarding(true);
         try {
-            const result = await deleteRequest(API.product(productId));
+            const result = await deleteRequest(API.product(discardTarget.id));
             const { success, message } = result.data;
             if (!success) {
                 toast.error(message || "Failed to discard draft");
                 return;
             }
             toast.success("Draft discarded");
+            setDiscardDialogOpen(false);
+            setDiscardTarget(null);
             fetchDrafts();
         } catch (err) {
             toast.error(err.response?.data?.message || err.message);
+        } finally {
+            setDiscarding(false);
         }
     };
 
@@ -891,8 +908,8 @@ const Product = () => {
                     return (
                         <div className="d-flex justify-content-center gap-2 align-items-center">
                             {renderActionIcon(VisibilityOutlined, { row, action: "view", color: "#98A2B3", titleAccess: "View", onClick: () => openReviewDialog(row.id) })}
-                            <button className="custom-button" onClick={() => handleResumeDraft(row.id)}>Resume</button>
-                            <button className="custom-button" onClick={() => handleDiscardDraft(row.id)}>Discard</button>
+                            {renderActionIcon(EditOutlined, { row, action: "edit", color: "#1E3A8A", titleAccess: "Resume editing", onClick: () => handleResumeDraft(row.id) })}
+                            {renderActionIcon(DeleteOutline, { row, color: "#B42318", titleAccess: "Discard draft", onClick: () => openDiscardDialog(row.id) })}
                         </div>
                     );
                 }
@@ -1391,6 +1408,21 @@ const Product = () => {
                     <button className="custom-button" onClick={() => setDeleteDialogOpen(false)}>Cancel</button>
                     <button className="custom-button" disabled={deleting} onClick={handleDeleteProduct}>
                         {deleting ? "Deleting..." : "Delete"}
+                    </button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={discardDialogOpen} onClose={() => setDiscardDialogOpen(false)}>
+                <DialogTitle>Discard Draft</DialogTitle>
+                <DialogContent>
+                    <DialogContentText>
+                        Discard this draft? This cannot be undone.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <button className="custom-button" onClick={() => setDiscardDialogOpen(false)}>Cancel</button>
+                    <button className="custom-button" disabled={discarding} onClick={handleConfirmDiscard}>
+                        {discarding ? "Discarding..." : "Discard"}
                     </button>
                 </DialogActions>
             </Dialog>
