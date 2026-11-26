@@ -48,13 +48,13 @@ const BUCKET_LABELS = {
   days_90_plus: '90+ Days',
 };
 
-// Full 19-field per-loan breakdown - see dashboardDetailService.js's delinquency-<bucket>
-// case for the exact field list/sourcing (Fineract loan summary for the money figures,
-// Fineract GET /v1/clients for Mobile/Email, a per-loan GET /v1/loans/{id} for Last Repayment
-// Date - none of this is a Mongo join). Loan Officer intentionally omitted: confirmed
-// unavailable on this Fineract deployment (no loanOfficerName/loanOfficerId field on any loan
-// response). Used as-is for exportColumns (CSV) and the PDF export (dashboardDetailColumns.js
-// mirrors this same full set server-side) - only the on-screen DataGrid gets a narrower view.
+// Full 19-field per-loan breakdown - see dashboardController.js's computeDelinquencyRows for
+// the exact field list/sourcing (Fineract per-loan summary for the money figures, Mongo
+// LoanMapping.metadata.clientData for Mobile/Email/NIN, transactions association for Last
+// Repayment Date). Loan Officer intentionally omitted: confirmed unavailable on this Fineract
+// deployment (no loanOfficerName/loanOfficerId field on any loan response). Used as-is for
+// exportColumns (CSV) and the PDF export (DELINQUENCY_PDF_COLUMNS mirrors this same full set
+// server-side) - only the on-screen DataGrid gets a narrower view.
 const DELINQUENCY_FULL_COLUMNS = [
   { field: 'loanAccountNo', headerName: 'Loan Account', flex: 1 },
   { field: 'clientName', headerName: 'Client', flex: 1.3 },
@@ -182,6 +182,8 @@ function getMetricConfig(metric) {
   return METRIC_CONFIG[metric] || { title: metric, columns: [] };
 }
 
+const DELINQUENCY_PAGE_SIZE = 25;
+
 export default function DashboardDetail() {
   const { metric } = useParams();
   const navigate = useNavigate();
@@ -189,8 +191,14 @@ export default function DashboardDetail() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exportingPdf, setExportingPdf] = useState(false);
+  // Delinquency buckets (Current especially) can be the largest row set on this page, so
+  // they're paginated server-side (see dashboardController.js's computeDelinquencyRows +
+  // detail()'s page/limit handling) rather than fetched in full like every other metric here.
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: DELINQUENCY_PAGE_SIZE });
+  const [rowCount, setRowCount] = useState(0);
 
   const config = getMetricConfig(metric);
+  const isServerPaginated = metric?.startsWith('delinquency-');
 
   // Respects whatever date range is currently active on the Dashboard (read from the same
   // sessionStorage key DateRangeControl writes to - see dashboardDateRange.js) rather than a
@@ -206,9 +214,14 @@ export default function DashboardDetail() {
       setLoading(true);
       try {
         const params = { ...(tenantId ? { tenantId } : {}), from: range.from, to: range.to };
+        if (isServerPaginated) {
+          params.page = paginationModel.page + 1; // MUI DataGrid is 0-indexed, backend is 1-indexed
+          params.limit = paginationModel.pageSize;
+        }
         const res = await getDashboardDetail(metric, params);
         if (!cancelled) {
           setRows((res.data?.rows || []).map((r, i) => ({ id: i, ...r })));
+          if (isServerPaginated) setRowCount(res.data?.pagination?.total || 0);
         }
       } catch (err) {
         if (!cancelled) toast.error(err.response?.data?.message || err.message);
@@ -218,17 +231,37 @@ export default function DashboardDetail() {
     };
     load();
     return () => { cancelled = true; };
-  }, [metric, tenantId, range.from, range.to]);
+  }, [metric, tenantId, range.from, range.to, isServerPaginated, paginationModel.page, paginationModel.pageSize]);
 
-  const handleExportCsv = () => {
-    if (!rows.length) {
+  // Switching metrics (e.g. navigating between buckets) should reset back to page 1 rather
+  // than carrying over a page index that may not exist in the new bucket's result set.
+  useEffect(() => {
+    setPaginationModel((prev) => (prev.page === 0 ? prev : { ...prev, page: 0 }));
+  }, [metric]);
+
+  const handleExportCsv = async () => {
+    // For server-paginated metrics (delinquency buckets), `rows` only holds the current
+    // DataGrid page - a CSV export needs the full bucket, so it re-fetches unpaginated
+    // (large limit) rather than exporting just what's on screen.
+    let exportRows = rows;
+    if (isServerPaginated) {
+      try {
+        const params = { ...(tenantId ? { tenantId } : {}), from: range.from, to: range.to, page: 1, limit: rowCount || 10000 };
+        const res = await getDashboardDetail(metric, params);
+        exportRows = (res.data?.rows || []).map((r, i) => ({ id: i, ...r }));
+      } catch (err) {
+        toast.error(err.response?.data?.message || err.message);
+        return;
+      }
+    }
+    if (!exportRows.length) {
       toast.info('No records to export');
       return;
     }
     // exportColumns (full field set) when a metric defines one (e.g. delinquency buckets,
     // which show a narrower set on screen than they export) - falls back to the on-screen
     // columns for every other metric, unchanged from before.
-    exportRowsAsCsv(config.exportColumns || config.columns, rows, `${metric}-${range.from}-to-${range.to}`);
+    exportRowsAsCsv(config.exportColumns || config.columns, exportRows, `${metric}-${range.from}-to-${range.to}`);
   };
 
   const handleExportPdf = async () => {
@@ -295,7 +328,14 @@ export default function DashboardDetail() {
           columns={config.columns}
           loading={loading}
           pageSizeOptions={[10, 25, 50]}
-          initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+          {...(isServerPaginated
+            ? {
+              paginationMode: 'server',
+              rowCount,
+              paginationModel,
+              onPaginationModelChange: setPaginationModel,
+            }
+            : { initialState: { pagination: { paginationModel: { pageSize: 25 } } } })}
           autoHeight
           components={{
             NoRowsOverlay: () => (
