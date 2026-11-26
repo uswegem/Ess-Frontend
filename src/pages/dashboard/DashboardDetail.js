@@ -241,14 +241,20 @@ export default function DashboardDetail() {
 
   const handleExportCsv = async () => {
     // For server-paginated metrics (delinquency buckets), `rows` only holds the current
-    // DataGrid page - a CSV export needs the full bucket, so it re-fetches unpaginated
-    // (large limit) rather than exporting just what's on screen.
+    // DataGrid page - a CSV export needs the full bucket, so it re-fetches all of it
+    // rather than exporting just what's on screen.
     let exportRows = rows;
     if (isServerPaginated) {
       try {
-        const params = { ...(tenantId ? { tenantId } : {}), from: range.from, to: range.to, page: 1, limit: rowCount || 10000 };
+        const params = { ...(tenantId ? { tenantId } : {}), from: range.from, to: range.to, all: true };
         const res = await getDashboardDetail(metric, params);
         exportRows = (res.data?.rows || []).map((r, i) => ({ id: i, ...r }));
+        // never hand over a partial file that looks complete
+        const total = res.data?.pagination?.total || 0;
+        if (exportRows.length < total) {
+          toast.error(`Export stopped: only ${exportRows.length} of ${total} records were returned`);
+          return;
+        }
       } catch (err) {
         toast.error(err.response?.data?.message || err.message);
         return;
