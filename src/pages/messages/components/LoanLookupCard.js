@@ -59,6 +59,8 @@ const LoanLookupCard = ({
   onOpen,
   inputRef,
   loanStatus,
+  essStatus,
+  essStatusCheckedAt,
   suggestionsLoading,
   suggestedCount,
   // Same `suggested` array and `onTypeChange` callback ManualMessageTrigger.js already
@@ -155,6 +157,17 @@ const LoanLookupCard = ({
               sx={{ bgcolor: 'statusPill.green.bg', color: 'statusPill.green.text', fontWeight: 600 }}
             />
           </Box>
+
+          {essStatus && (
+            <Box sx={{ py: 0.4 }}>
+              <DetailRow label="Utumishi status:" value={essStatus} valueSx={{ fontFamily: 'monospace' }} />
+              {essStatusCheckedAt && (
+                <Typography sx={{ fontSize: 11, color: 'text.muted', textAlign: 'right' }}>
+                  checked {new Date(essStatusCheckedAt).toLocaleString()}
+                </Typography>
+              )}
+            </Box>
+          )}
 
           {/* Quick Actions - top 3 of the same `suggested` list MessageComposerCard already
               renders in full below; onTypeChange is the identical handler the Composer's own

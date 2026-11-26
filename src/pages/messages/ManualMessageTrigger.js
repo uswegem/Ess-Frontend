@@ -18,12 +18,13 @@ import PageSearchBar from './components/PageSearchBar';
 import LoanLookupCard from './components/LoanLookupCard';
 import MessageHistoryCard from './components/MessageHistoryCard';
 import MessageComposerCard from './components/MessageComposerCard';
-import LiquidationConfirmModal from './components/LiquidationConfirmModal';
+import SensitiveSendConfirmModal from './components/SensitiveSendConfirmModal';
 
-// This message type closes the loan permanently - the confirmation-modal guard applies
-// whenever it's selected, regardless of whether the backend suggested it for this loan's
-// current status (an operator can still pick it manually from "Other message types").
-const REQUIRES_HEAVY_CONFIRMATION_TYPES = ['LOAN_LIQUIDATION_NOTIFICATION'];
+// These close a loan or report money as paid - the confirmation-modal guard applies
+// whenever one is selected, regardless of whether the backend suggested it for this loan
+// (an operator can still pick it manually from "Other message types"). Any other type the
+// backend suggests with requiresConfirmation is guarded too.
+const ALWAYS_CONFIRM_TYPES = ['LOAN_LIQUIDATION_NOTIFICATION', 'LOAN_DISBURSEMENT_NOTIFICATION'];
 
 const ManualMessageTrigger = () => {
   const { can } = usePermissions();
@@ -51,13 +52,24 @@ const ManualMessageTrigger = () => {
 
   const [suggestions, setSuggestions] = useState(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  // bumped after a send, which can change what is suggested
+  const [suggestionsVersion, setSuggestionsVersion] = useState(0);
 
   const [pendingSend, setPendingSend] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   const isSensitiveType = (type) => SENSITIVE_MESSAGE_TYPES.includes(type);
   const hasPermissionForType = (type) => canTrigger && (!isSensitiveType(type) || canTriggerSensitive);
-  const requiresHeavyConfirmation = (type) => REQUIRES_HEAVY_CONFIRMATION_TYPES.includes(type);
+  const requiresHeavyConfirmation = (type) =>
+    ALWAYS_CONFIRM_TYPES.includes(type) ||
+    Boolean(suggestions?.suggested?.some((s) => s.messageType === type && s.requiresConfirmation));
+
+  // The backend's values for this loan when it supplies them, otherwise the type's template
+  const detailsFor = (type, loan) => {
+    const forThisLoan = suggestions?.applicationNumber === loan?.essApplicationNumber;
+    const supplied = forThisLoan && suggestions?.suggested?.find((s) => s.messageType === type)?.messageDetails;
+    return supplied || buildMessageDetails(MESSAGE_TYPES[type].messageDetails, loan);
+  };
 
   const fetchLoans = async () => {
     if (loanOptions.length > 0 || loanLoading) return;
@@ -111,11 +123,13 @@ const ManualMessageTrigger = () => {
       return;
     }
     let cancelled = false;
+    const requested = selectedLoan.essApplicationNumber;
+    setSuggestions(null);
     setSuggestionsLoading(true);
-    getSuggestedMessages(selectedLoan.essApplicationNumber)
+    getSuggestedMessages(requested)
       .then((res) => {
         if (cancelled) return;
-        setSuggestions(res?.data || null);
+        setSuggestions(res?.data ? { ...res.data, applicationNumber: requested } : null);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -128,7 +142,15 @@ const ManualMessageTrigger = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedLoan?.essApplicationNumber]);
+  }, [selectedLoan?.essApplicationNumber, suggestionsVersion]);
+
+  // Suggestions arrive after the loan (and possibly the type) was picked
+  useEffect(() => {
+    const supplied = suggestions?.suggested?.find((s) => s.messageType === messageType)?.messageDetails;
+    if (supplied) setMessageDetails(supplied);
+    // only when new suggestions arrive, so the operator's own edits are not overwritten
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestions]);
 
   const handleLoanChange = (_e, loan) => {
     setSelectedLoan(loan);
@@ -136,8 +158,7 @@ const ManualMessageTrigger = () => {
       setApplicationNumber(loan.essApplicationNumber);
     }
     if (messageType && messageType !== LOAN_STATUS_REQUEST_TYPE) {
-      const template = MESSAGE_TYPES[messageType];
-      setMessageDetails(buildMessageDetails(template.messageDetails, loan));
+      setMessageDetails(detailsFor(messageType, loan));
     }
   };
 
@@ -150,14 +171,12 @@ const ManualMessageTrigger = () => {
       setMessageDetails('');
       return;
     }
-    const template = MESSAGE_TYPES[type];
-    setMessageDetails(buildMessageDetails(template.messageDetails, selectedLoan));
+    setMessageDetails(detailsFor(type, selectedLoan));
   };
 
   const handleReset = () => {
     if (!messageType || messageType === LOAN_STATUS_REQUEST_TYPE) return;
-    const template = MESSAGE_TYPES[messageType];
-    setMessageDetails(buildMessageDetails(template.messageDetails, selectedLoan));
+    setMessageDetails(detailsFor(messageType, selectedLoan));
   };
 
   const handleSend = async () => {
@@ -289,6 +308,7 @@ const ManualMessageTrigger = () => {
       }
       toast.success('Message sent successfully');
       setResult({ success: true, sent, essResponse, responseCode, statusDesc, responseTimeMs });
+      setSuggestionsVersion((version) => version + 1);
 
       if (selectedLoan?.essApplicationNumber) {
         getMessageLogs({ applicationNumber: selectedLoan.essApplicationNumber, direction: 'outgoing', limit: 20 })
@@ -401,6 +421,8 @@ const ManualMessageTrigger = () => {
             onOpen={fetchLoans}
             inputRef={loanInputRef}
             loanStatus={loanStatus}
+            essStatus={suggestions?.essStatus}
+            essStatusCheckedAt={suggestions?.essStatusCheckedAt}
             suggestionsLoading={suggestionsLoading}
             suggestedCount={quickActions.length}
             suggested={quickActions}
@@ -440,8 +462,10 @@ const ManualMessageTrigger = () => {
         </Grid>
       </Grid>
 
-      <LiquidationConfirmModal
-        open={confirmModalOpen && pendingSend?.messageType === 'LOAN_LIQUIDATION_NOTIFICATION'}
+      <SensitiveSendConfirmModal
+        open={confirmModalOpen}
+        messageType={pendingSend?.messageType}
+        messageDetails={messageDetails}
         applicationNumber={selectedLoan?.essApplicationNumber}
         onCancel={handleCancelConfirm}
         onConfirm={handleConfirmedSend}
