@@ -5,16 +5,14 @@ import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import ArrowBackOutlined from '@mui/icons-material/ArrowBackOutlined';
 import SendOutlined from '@mui/icons-material/SendOutlined';
-import { getRequest, postRequest } from '../../ApiFunction';
+import { getRequest } from '../../ApiFunction';
 import API from '../../Api';
 import { toast } from 'react-toastify';
 import { usePermissions } from '../../hooks/usePermissions';
-import { MESSAGE_TYPES, buildMessageDetails } from '../../services/messages/messageTypes';
+import { triggerMessageLink } from '../../utils/triggerMessageLink';
 import { formatCurrency } from '../../utils/formatAmount';
 
 // InfoRow hides the whole row when value is null/undefined/'' - only run amounts through
@@ -44,12 +42,10 @@ const LoanDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { can } = usePermissions();
-  const canTriggerSensitive = can('messages:trigger_sensitive');
+  const canTrigger = can('messages:trigger');
 
   const [loan, setLoan] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [menuAnchor, setMenuAnchor] = useState(null);
-  const [sendingType, setSendingType] = useState(null);
 
   const fetchLoan = useCallback(async () => {
     setLoading(true);
@@ -71,29 +67,6 @@ const LoanDetail = () => {
   useEffect(() => {
     fetchLoan();
   }, [fetchLoan]);
-
-  const sendNotification = async (messageType) => {
-    setMenuAnchor(null);
-    setSendingType(messageType);
-    try {
-      const template = MESSAGE_TYPES[messageType];
-      const messageDetails = buildMessageDetails(template.messageDetails, loan);
-      const response = await postRequest(API.MANUAL_OUTGOING_MESSAGE, {
-        MessageType: messageType,
-        MessageDetails: messageDetails,
-      });
-      const { success, error } = response.data;
-      if (!success) {
-        toast.error(error || 'Failed to send notification');
-        return;
-      }
-      toast.success('Notification sent');
-    } catch (err) {
-      toast.error(err.response?.data?.error || err.response?.data?.message || err.message);
-    } finally {
-      setSendingType(null);
-    }
-  };
 
   if (loading) {
     return (
@@ -133,19 +106,11 @@ const LoanDetail = () => {
           <Button
             variant="contained"
             startIcon={<SendOutlined />}
-            disabled={!canTriggerSensitive || Boolean(sendingType)}
-            onClick={(e) => setMenuAnchor(e.currentTarget)}
+            disabled={!canTrigger}
+            onClick={() => navigate(triggerMessageLink(loan))}
           >
-            {sendingType ? 'Sending...' : 'Send Notification'}
+            Trigger Message
           </Button>
-          <Menu anchorEl={menuAnchor} open={Boolean(menuAnchor)} onClose={() => setMenuAnchor(null)}>
-            <MenuItem onClick={() => sendNotification('LOAN_DISBURSEMENT_NOTIFICATION')}>
-              Send Disbursement Notification
-            </MenuItem>
-            <MenuItem onClick={() => sendNotification('LOAN_DISBURSEMENT_FAILURE_NOTIFICATION')}>
-              Send Disbursement Failure Notification
-            </MenuItem>
-          </Menu>
         </div>
       </Paper>
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import { toast } from 'react-toastify';
@@ -33,6 +34,9 @@ const ManualMessageTrigger = () => {
   const { activeTenant } = useActiveTenant();
 
   const loanInputRef = useRef(null);
+  // set by the "Trigger Message" links on the loan pages
+  const [searchParams] = useSearchParams();
+  const linkedApplication = searchParams.get('application');
 
   const [loanOptions, setLoanOptions] = useState([]);
   const [loanLoading, setLoanLoading] = useState(false);
@@ -72,7 +76,7 @@ const ManualMessageTrigger = () => {
   };
 
   const fetchLoans = async () => {
-    if (loanOptions.length > 0 || loanLoading) return;
+    if (loanOptions.length > 0 || loanLoading) return loanOptions;
     setLoanLoading(true);
     try {
       // CHARGES_CALCULATED loans have no LOAN_OFFER_REQUEST yet - excluded here (message-
@@ -83,15 +87,34 @@ const ManualMessageTrigger = () => {
       const { success, data, message } = res.data;
       if (!success) {
         toast.error(message || 'Failed to load loans');
-        return;
+        return null;
       }
-      setLoanOptions(data?.loans || []);
+      const loans = data?.loans || [];
+      setLoanOptions(loans);
+      return loans;
     } catch (err) {
       toast.error(err.response?.data?.message || err.message);
+      return null;
     } finally {
       setLoanLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!linkedApplication || !canTrigger) return;
+    fetchLoans().then((loans) => {
+      if (!loans) return;
+      const loan = loans.find((l) => l.essApplicationNumber === linkedApplication);
+      if (!loan) {
+        toast.error(`Loan ${linkedApplication} is not available for messaging`);
+        return;
+      }
+      setSelectedLoan(loan);
+      setApplicationNumber(loan.essApplicationNumber);
+    });
+    // once per link: the operator's later choice of loan must not be overridden
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkedApplication, canTrigger]);
 
   useEffect(() => {
     if (!selectedLoan?.essApplicationNumber) {
